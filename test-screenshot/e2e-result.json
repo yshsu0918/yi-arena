@@ -1,0 +1,221 @@
+{
+  "baseUrl": "http://localhost:8901",
+  "finishedAt": "2026-10-22T02:02:47.603Z",
+  "playerList": true,
+  "moveLatencyMs": {
+    "avg": 874,
+    "min": 112,
+    "max": 1048,
+    "samples": 14
+  },
+  "games": [
+    {
+      "room": "A",
+      "game_type": "tictactoe",
+      "players": [
+        "Player1",
+        "Player2"
+      ],
+      "winner": "Player1",
+      "moves": [
+        [
+          "Player1",
+          0,
+          0
+        ],
+        [
+          "Player2",
+          0,
+          1
+        ],
+        [
+          "Player1",
+          1,
+          0
+        ],
+        [
+          "Player2",
+          1,
+          1
+        ],
+        [
+          "Player1",
+          2,
+          0
+        ]
+      ]
+    },
+    {
+      "room": "B",
+      "game_type": "gomoku",
+      "players": [
+        "Player3",
+        "Player4"
+      ],
+      "winner": "Player3",
+      "moves": [
+        [
+          "Player3",
+          7,
+          7
+        ],
+        [
+          "Player4",
+          7,
+          8
+        ],
+        [
+          "Player3",
+          8,
+          7
+        ],
+        [
+          "Player4",
+          8,
+          8
+        ],
+        [
+          "Player3",
+          9,
+          7
+        ],
+        [
+          "Player4",
+          9,
+          8
+        ],
+        [
+          "Player3",
+          10,
+          7
+        ],
+        [
+          "Player4",
+          10,
+          8
+        ],
+        [
+          "Player3",
+          11,
+          7
+        ]
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "step": "S0",
+      "desc": "五位玩家進入大廳、房間列表為空",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "S0",
+      "desc": "玩家列表顯示 5 人",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "S1",
+      "desc": "房間列表出現 2 個房間並標示遊戲與等待中",
+      "ok": true,
+      "detail": "井字棋\tPlayer1\tPlayer1\t1/2\t等待中\t加入 | 五子棋\tPlayer3\tPlayer3\t1/2\t等待中\t加入"
+    },
+    {
+      "step": "S2",
+      "desc": "兩個房間人數變為 2/2",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "S3",
+      "desc": "P5 加入已滿房間被拒絕",
+      "ok": true,
+      "detail": "錯誤訊息「無法加入房間：房間已滿」"
+    },
+    {
+      "step": "S3",
+      "desc": "房間 A 對局不受影響",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "S4",
+      "desc": "兩房間進入對局、大廳顯示進行中",
+      "ok": true,
+      "detail": "A: 輪到你（✕ 先手） / B: 輪到你（● 黑（先手））"
+    },
+    {
+      "step": "S5",
+      "desc": "A 房：還沒輪到 P2 時落子被拒絕",
+      "ok": true,
+      "detail": "錯誤訊息「還沒輪到你」"
+    },
+    {
+      "step": "S5",
+      "desc": "B 房：還沒輪到 P4 時落子被拒絕",
+      "ok": true,
+      "detail": "錯誤訊息「還沒輪到你」"
+    },
+    {
+      "step": "S5",
+      "desc": "A 房：落在已有棋子的格子被拒絕",
+      "ok": true,
+      "detail": "錯誤訊息「這格已經有棋子」"
+    },
+    {
+      "step": "S5",
+      "desc": "兩房間同時落子、棋盤互不干擾",
+      "ok": true,
+      "detail": "A 有 4 子，B 有 8 子"
+    },
+    {
+      "step": "S6",
+      "desc": "A 房雙方互相收到訊息",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "S6",
+      "desc": "B 房雙方互相收到訊息",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "S6",
+      "desc": "A 房訊息不出現在 B 房、B 房訊息不出現在 A 房",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "S6",
+      "desc": "P5（大廳）看不到任何房內訊息",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "S7",
+      "desc": "A 房雙方顯示 Player1 獲勝",
+      "ok": true,
+      "detail": "Player1 獲勝 你贏了！ / Player1 獲勝 你輸了"
+    },
+    {
+      "step": "S7",
+      "desc": "B 房雙方顯示 Player3 獲勝",
+      "ok": true,
+      "detail": "Player3 獲勝 你贏了！ / Player3 獲勝 你輸了"
+    },
+    {
+      "step": "S8",
+      "desc": "已結束的房間被移除或標示已結束",
+      "ok": true,
+      "detail": "剩 2 間，皆標示已結束"
+    },
+    {
+      "step": "S8",
+      "desc": "玩家列表顯示 5 人皆在大廳",
+      "ok": true,
+      "detail": ""
+    }
+  ]
+}

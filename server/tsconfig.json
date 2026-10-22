@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "target": "es5",
+    "lib": ["es5"],
+    "outFile": "./build/index.js",
+    "strict": true,
+    "noImplicitAny": false,
+    "types": []
+  },
+  "files": ["./src/rules.ts", "./src/main.ts", "./node_modules/nakama-runtime/index.d.ts"]
+}

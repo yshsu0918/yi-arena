@@ -1,0 +1,53 @@
+# Run with: docker compose -p poc-nakama up -d
+# 8901 is the single entry point: nginx serves the Vue app and proxies
+# Nakama's HTTP API (/v2) and realtime socket (/ws) to the nakama container.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: localdb
+      POSTGRES_DB: nakama
+    ports:
+      - "${DB_PORT:-5441}:5432"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-d", "nakama"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  nakama:
+    image: heroiclabs/nakama:3.41.0
+    depends_on:
+      db:
+        condition: service_healthy
+    entrypoint:
+      - /bin/sh
+      - -ecx
+      - >
+        /nakama/nakama migrate up --database.address postgres:localdb@db:5432/nakama &&
+        exec /nakama/nakama --name nakama1
+        --database.address postgres:localdb@db:5432/nakama
+        --logger.level INFO
+        --session.token_expiry_sec 7200
+        --runtime.js_entrypoint index.js
+        --runtime.env TICK_RATE=${TICK_RATE:-1}
+    volumes:
+      - ./server/build:/nakama/data/modules:ro
+    ports:
+      - "${CONSOLE_PORT:-7351}:7351"   # admin console (admin / password)
+    healthcheck:
+      test: ["CMD", "/nakama/nakama", "healthcheck"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  web:
+    image: nginx:alpine
+    depends_on:
+      - nakama
+    volumes:
+      - ./web/dist:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "${PORT:-8901}:80"

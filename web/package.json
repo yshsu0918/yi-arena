@@ -1,0 +1,25 @@
+{
+  "name": "web",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "typecheck": "vue-tsc --noEmit"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@heroiclabs/nakama-js": "^2.8.0",
+    "vue": "3.5"
+  },
+  "type": "module",
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.10",
+    "typescript": "5.9",
+    "vite": "^7.3.7",
+    "vue-tsc": "^3.3.13"
+  }
+}
