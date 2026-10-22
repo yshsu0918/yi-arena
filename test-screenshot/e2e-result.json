@@ -1,11 +1,17 @@
 {
   "baseUrl": "http://localhost:8901",
-  "finishedAt": "2026-10-22T02:02:47.603Z",
+  "finishedAt": "2026-10-22T02:48:36.987Z",
   "playerList": true,
   "moveLatencyMs": {
-    "avg": 874,
-    "min": 112,
-    "max": 1048,
+    "avg": 879,
+    "min": 174,
+    "max": 1002,
+    "samples": 14
+  },
+  "opponentLatencyMs": {
+    "avg": 879,
+    "min": 174,
+    "max": 1002,
     "samples": 14
   },
   "games": [

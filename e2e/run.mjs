@@ -40,6 +40,7 @@ for (let i = 1; i <= 5; i++) {
   const context = await browser.newContext({ viewport: VIEWPORT, locale: 'zh-TW' });
   const page = await context.newPage();
   page.on('pageerror', (e) => console.log(`[P${i} pageerror]`, e.message));
+  if (process.env.DEBUG) page.on('console', (m) => console.log(`[P${i} console]`, m.text()));
   players[`P${i}`] = { name: `Player${i}`, page };
 }
 const { P1, P2, P3, P4, P5 } = players;
@@ -80,14 +81,26 @@ async function login(p) {
   await p.page.getByTestId('lobby').waitFor({ timeout: TIMEOUT });
 }
 
-const latencies = [];
+// Times include Playwright's click and frame-polling overhead (a few ms).
+const latencies = [];    // click -> stone on the mover's screen
+const oppLatencies = []; // click -> stone on the opponent's screen (always a server round trip)
 // Click a cell and wait until both players see the stone.
 async function move(me, opp, x, y) {
   const t0 = Date.now();
   await cell(me, x, y).click();
-  await waitFor(`stone at ${x},${y} for ${me.name}`, async () => (await cell(me, x, y).innerText()).trim() !== '');
-  latencies.push(Date.now() - t0);
-  await waitFor(`stone at ${x},${y} for ${opp.name}`, async () => (await cell(opp, x, y).innerText()).trim() !== '');
+  await Promise.all([
+    stoneVisible(me, x, y).then(() => latencies.push(Date.now() - t0)),
+    stoneVisible(opp, x, y).then(() => oppLatencies.push(Date.now() - t0)),
+  ]);
+}
+
+// Checked inside the page on every animation frame (~16 ms resolution).
+function stoneVisible(p, x, y) {
+  return p.page.waitForFunction(
+    (id) => document.querySelector(`[data-testid="${id}"]`)?.textContent.trim() !== '',
+    `cell-${x}-${y}`,
+    { polling: 'raf', timeout: TIMEOUT },
+  );
 }
 
 async function expectRejectedMove(me, x, y, step, desc) {
@@ -257,12 +270,14 @@ try {
   await shot('10-lobby-after-p1.png', P1);
   await shot('10-lobby-after-p5.png', P5);
 
-  const avg = Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length);
+  const stats = (xs) => ({ avg: Math.round(xs.reduce((a, b) => a + b, 0) / xs.length), min: Math.min(...xs), max: Math.max(...xs), samples: xs.length });
+  const avg = stats(latencies).avg;
   const result = {
     baseUrl: BASE_URL,
     finishedAt: new Date().toISOString(),
     playerList,
-    moveLatencyMs: { avg, min: Math.min(...latencies), max: Math.max(...latencies), samples: latencies.length },
+    moveLatencyMs: stats(latencies),
+    opponentLatencyMs: stats(oppLatencies),
     games: [
       { room: 'A', game_type: 'tictactoe', players: [P1.name, P2.name], winner: P1.name, moves: movesA },
       { room: 'B', game_type: 'gomoku', players: [P3.name, P4.name], winner: P3.name, moves: movesB },
@@ -270,7 +285,7 @@ try {
     checks,
   };
   writeFileSync(OUT + 'e2e-result.json', JSON.stringify(result, null, 2));
-  console.log(`\nALL PASS (${checks.length} checks). move latency avg ${avg} ms`);
+  console.log(`\nALL PASS (${checks.length} checks). move latency avg ${avg} ms, opponent sees it after avg ${stats(oppLatencies).avg} ms`);
 } catch (e) {
   console.error('\nE2E FAILED:', e.message);
   for (const [k, p] of Object.entries(players)) await p.page.screenshot({ path: OUT + `failure-${k}.png` }).catch(() => {});

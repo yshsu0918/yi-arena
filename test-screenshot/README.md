@@ -3,7 +3,7 @@
 - 測試日期：2026-10-22
 - 版本：Nakama 3.41.0、Postgres 16、nakama-js 2.8.0、Vue 3.5、Vite 7.3、Playwright 1.64（Chromium headless）
 - 執行方式：`./scripts/test.sh`（建置 → `docker compose down -v` 清空資料庫 → 啟動 → E2E → 資料庫驗證）
-- 本目錄的截圖、`e2e-result.json`、`db-check.txt` 來自 `TICK_RATE=1` 的一次完整執行。
+- 本目錄的截圖、`e2e-result.json`、`db-check.txt` 來自 `TICK_RATE=1` 的一次完整執行；tick 1、5、10 各至少完整通過一次。
 
 ## 結果摘要
 
@@ -26,14 +26,17 @@ N/A 項目：無。
 
 ## 落子延遲（tick 頻率）
 
-延遲是從點擊到自己畫面出現棋子的時間，E2E 每 100 ms 檢查一次畫面，所以數字含最多約 100 ms 的量測誤差。
+延遲是從點擊到畫面出現棋子的時間，在瀏覽器內每個畫面幀（約 16 ms）檢查一次。Nakama 的落子要等伺服器處理後才顯示，所以下棋者與對手看到的時間相同。
 
-| TICK_RATE | 平均 | 最小 | 最大 | 樣本 |
-| --- | --- | --- | --- | --- |
-| 1（官方建議回合制的最低值） | 874 ms | 112 ms | 1048 ms | 14 |
-| 10 | 117 ms | 112 ms | 134 ms | 14 |
+| TICK_RATE | 平均（14 步） |
+| --- | --- |
+| 1（官方建議回合制的最低值） | 879 ms（最小 174、最大 1002） |
+| 5 | 190 ms |
+| 10 | 89 ms |
 
-結論：tick 1 的延遲平均接近 1 秒，人工下棋可以接受但手感明顯遲滯；tick 5～10 的延遲幾乎感覺不到，伺服器負擔對回合制而言仍然很低。正式版建議 5 以上。用 `TICK_RATE=10 ./scripts/test.sh` 可重跑。
+注意：E2E 每一步都在上一步顯示後立刻落子，剛好在 tick 剛過時送出，所以幾乎每步都要等滿一個 tick。真人下棋的落子時間是隨機的，tick 1 的平均等待約為半個 tick（約 0.5 秒），最差 1 秒。
+
+結論：tick 1 人工下棋可以接受，但手感明顯遲滯；tick 5～10 幾乎感覺不到，回合制的伺服器負擔仍然很低。正式版建議 5 以上。可用 `TICK_RATE=10 ./scripts/test.sh` 重跑。
 
 ## 實作方式與自行實作的部分
 
@@ -48,6 +51,11 @@ N/A 項目：無。
 
 1. **前端漏收第一個狀態**：`matchJoin` 中廣播的狀態有時比 `joinMatch()` 的 promise 先到，客戶端因為還沒記下 match id 而把它丟掉。tick 1 時剛好沒發生，tick 10 時穩定重現。修正：在呼叫 `joinMatch` 之前先記下 match id。這是 Nakama 客戶端常見的陷阱，值得記在開發規範裡。
 2. Vite 8 在 npm 10.8.2 下安裝失敗（npm 內部錯誤 `Cannot read properties of null (reading 'edgesOut')`），改用 Vite 7.3。與 Nakama 無關。
+3. 測試期間 npm registry 的安全稽核端點（audit）卡住，導致 `npm ci` 不會結束；`scripts/test.sh` 改為加上 `--no-audit`，並且只在缺少 `node_modules` 時才安裝。
+
+## 平行執行
+
+三個框架的 `scripts/test.sh` 同時執行（不同埠、不同資料庫、不同 compose 專案名稱）時全部通過，互不干擾。
 
 ## 粗估實作時間
 
