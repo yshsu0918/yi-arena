@@ -2,7 +2,7 @@
 
 - 測試日期：2026-10-22
 - 版本：@colyseus/core 0.18.21、@colyseus/ws-transport 0.18.4、@colyseus/sdk 0.18.5、Postgres 16、Vue 3.5、Vite 7.3、Playwright 1.64（Chromium headless）、Node 20
-- 執行方式：`./scripts/test.sh`（建置 → `docker compose down -v` 清空資料庫 → 啟動 → E2E → 資料庫驗證）。連續兩次完整執行皆通過。
+- 執行方式：`./scripts/test.sh`（建置 → `docker compose down -v` 清空資料庫 → 啟動 → E2E → 資料庫驗證）。修正執行腳本後，單獨執行與三框架平行執行都完整通過（見「遇到的問題」第 4 點）。
 
 ## 結果摘要
 
@@ -23,7 +23,7 @@ E2E 19 項檢查、資料庫 14 項檢查全部通過。
 
 N/A 項目：無。
 
-落子延遲：平均 115 ms（最小 112、最大 116，14 個樣本）。E2E 每 100 ms 檢查一次畫面，所以實際延遲大約只有 10～20 ms。Colyseus 的訊息是收到就處理，沒有 tick 延遲。
+落子延遲（點擊到畫面出現棋子，在瀏覽器內每個畫面幀檢查，14 步）：下棋者 50 ms（28～67）、對手 24 ms（11～37）。Colyseus 的訊息收到就處理，沒有 tick 延遲；數字已接近量測誤差（Playwright 點擊與畫面幀），兩者的差異沒有意義。
 
 ## 實作方式與自行實作的部分
 
@@ -41,6 +41,8 @@ N/A 項目：無。
 1. 安裝 `colyseus` 0.18 總套件（含 playground、monitor、redis 等）時 npm 10.8.2 出現內部錯誤 `Cannot read properties of null (reading 'edgesOut')`，改成只裝 `@colyseus/core` 與 `@colyseus/ws-transport`。Vite 8 也有同樣問題，改用 Vite 7.3。
 2. 為避免「伺服器在 `onJoin` 送出的第一個訊息比客戶端註冊 handler 早到」（在 Nakama 分支實際遇過），客戶端註冊好 handler 後送 `ready`，伺服器才回傳完整狀態。
 3. 0.18 的文件與網路範例多半還是 0.15／0.16 的寫法（例如套件名稱 `colyseus.js` 已改為 `@colyseus/sdk`），需要直接看型別定義確認 API。
+4. 第一版 `scripts/test.sh` 用 `npx tsx` 啟動伺服器，結束時只殺掉 `npx`，真正的 node 程序留在背景繼續佔用 8902。之後兩次「穩定性重跑」其實是舊程序在服務（程式碼相同，新程序已建好資料表才因埠被佔用而退出，所以結果仍正確）。已改成 `exec node --import tsx`，並重新執行取得本目錄的結果。
+5. 測試期間 npm registry 的安全稽核端點（audit）卡住，導致 `npm ci` 不會結束；`scripts/test.sh` 改為加上 `--no-audit`，並且只在缺少 `node_modules` 時才安裝。
 
 ## 粗估實作時間
 

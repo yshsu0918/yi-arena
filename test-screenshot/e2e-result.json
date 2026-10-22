@@ -1,11 +1,17 @@
 {
   "baseUrl": "http://localhost:8902",
-  "finishedAt": "2026-10-22T02:07:21.940Z",
+  "finishedAt": "2026-10-22T02:47:16.879Z",
   "playerList": true,
   "moveLatencyMs": {
-    "avg": 115,
-    "min": 112,
-    "max": 116,
+    "avg": 50,
+    "min": 28,
+    "max": 67,
+    "samples": 14
+  },
+  "opponentLatencyMs": {
+    "avg": 24,
+    "min": 11,
+    "max": 37,
     "samples": 14
   },
   "games": [
@@ -131,7 +137,7 @@
       "step": "S3",
       "desc": "P5 加入已滿房間被拒絕",
       "ok": true,
-      "detail": "錯誤訊息「無法加入房間：房間已滿（room \"VZo5OZ9wQ\" is locked）」"
+      "detail": "錯誤訊息「無法加入房間：房間已滿（room \"4rwsO0n1x\" is locked）」"
     },
     {
       "step": "S3",
