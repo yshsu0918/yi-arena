@@ -1,0 +1,39 @@
+# DB check (poc-colyseus) at 2026-10-22T02:07:22.110Z
+
+## Query
+SELECT game_id, game_type, players, moves, result, started_at, ended_at FROM game_records ORDER BY started_at;
+
+## Result
+  game_id  | game_type |                                                    players                                                    |                                                                                                                                                                                                                   moves                                                                                                                                                                                                                    |                result                |         started_at         |          ended_at          
+-----------+-----------+---------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------+----------------------------+----------------------------
+ VZo5OZ9wQ | tictactoe | [{"seat": 0, "order": "first", "username": "Player1"}, {"seat": 1, "order": "second", "username": "Player2"}] | [{"n": 1, "x": 0, "y": 0, "player": "Player1"}, {"n": 2, "x": 0, "y": 1, "player": "Player2"}, {"n": 3, "x": 1, "y": 0, "player": "Player1"}, {"n": 4, "x": 1, "y": 1, "player": "Player2"}, {"n": 5, "x": 2, "y": 0, "player": "Player1"}]                                                                                                                                                                                                | {"draw": false, "winner": "Player1"} | 2026-10-22 02:07:18.066+00 | 2026-10-22 02:07:21.518+00
+ cMVvwIz7- | gomoku    | [{"seat": 0, "order": "first", "username": "Player3"}, {"seat": 1, "order": "second", "username": "Player4"}] | [{"n": 1, "x": 7, "y": 7, "player": "Player3"}, {"n": 2, "x": 7, "y": 8, "player": "Player4"}, {"n": 3, "x": 8, "y": 7, "player": "Player3"}, {"n": 4, "x": 8, "y": 8, "player": "Player4"}, {"n": 5, "x": 9, "y": 7, "player": "Player3"}, {"n": 6, "x": 9, "y": 8, "player": "Player4"}, {"n": 7, "x": 10, "y": 7, "player": "Player3"}, {"n": 8, "x": 10, "y": 8, "player": "Player4"}, {"n": 9, "x": 11, "y": 7, "player": "Player3"}] | {"draw": false, "winner": "Player3"} | 2026-10-22 02:07:18.084+00 | 2026-10-22 02:07:21.517+00
+(2 rows)
+
+## Checks
+PASS 共有 2 筆對局紀錄（無缺漏、無重複） — 2 筆
+PASS game_id 不重複
+PASS 房間 A（tictactoe） 玩家與執子順序正確 — Player1 → Player2
+PASS 房間 A（tictactoe） 勝者與畫面一致 — winner=Player1
+PASS 房間 A（tictactoe） 棋步數量一致 — 5 手
+PASS 房間 A（tictactoe） 棋步順序與內容一致 — Player1(0,0) Player2(0,1) Player1(1,0) Player2(1,1) Player1(2,0)
+PASS 房間 A（tictactoe） 有 started_at 與 ended_at 且順序正確 — 2026-10-22T02:07:18.066+00:00 → 2026-10-22T02:07:21.518+00:00
+PASS 房間 A（tictactoe） 不含另一房間的玩家棋步
+PASS 房間 B（gomoku） 玩家與執子順序正確 — Player3 → Player4
+PASS 房間 B（gomoku） 勝者與畫面一致 — winner=Player3
+PASS 房間 B（gomoku） 棋步數量一致 — 9 手
+PASS 房間 B（gomoku） 棋步順序與內容一致 — Player3(7,7) Player4(7,8) Player3(8,7) Player4(8,8) Player3(9,7) Player4(9,8) Player3(10,7) Player4(10,8) Player3(11,7)
+PASS 房間 B（gomoku） 有 started_at 與 ended_at 且順序正確 — 2026-10-22T02:07:18.084+00:00 → 2026-10-22T02:07:21.517+00:00
+PASS 房間 B（gomoku） 不含另一房間的玩家棋步
+
+## Chat persistence (optional, section 7)
+SELECT room_id, sender, text, created_at FROM chat_messages ORDER BY id;
+  room_id  | sender  |          text          |          created_at           
+-----------+---------+------------------------+-------------------------------
+ VZo5OZ9wQ | Player1 | A房 P1：你好！         | 2026-10-22 02:07:19.984936+00
+ cMVvwIz7- | Player3 | B房 P3：大家好         | 2026-10-22 02:07:20.023201+00
+ VZo5OZ9wQ | Player2 | A房 P2：收到，請多指教 | 2026-10-22 02:07:20.072519+00
+ cMVvwIz7- | Player4 | B房 P4：你好           | 2026-10-22 02:07:20.117535+00
+(4 rows)
+
+ALL DB CHECKS PASS

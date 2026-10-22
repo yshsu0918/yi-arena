@@ -1,0 +1,29 @@
+{
+  "name": "server",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "tsx --test test/*.test.ts",
+    "start": "tsx src/index.ts",
+    "typecheck": "tsc"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "type": "module",
+  "devDependencies": {
+    "@types/express": "^4.17.25",
+    "@types/node": "^20.19.43",
+    "@types/pg": "^8.23.1",
+    "tsx": "^4.23.15",
+    "typescript": "5.9"
+  },
+  "dependencies": {
+    "@colyseus/core": "^0.18.21",
+    "@colyseus/schema": "^5.0.42",
+    "@colyseus/ws-transport": "^0.18.4",
+    "express": "^4.22.3",
+    "pg": "^8.23.1"
+  }
+}

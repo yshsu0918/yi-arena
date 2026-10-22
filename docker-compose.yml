@@ -1,0 +1,17 @@
+# Run with: docker compose -p poc-colyseus up -d
+# Only the database runs in Docker; the Colyseus server (Node) runs on the host
+# via scripts/test.sh or `npm start` in server/, and serves the Vue app on 8902.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: localdb
+      POSTGRES_DB: colyseus
+    ports:
+      - "${DB_PORT:-5442}:5432"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-d", "colyseus"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
