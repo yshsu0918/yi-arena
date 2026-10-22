@@ -1,0 +1,36 @@
+# DB check (poc-boardgameio) at 2026-10-22T02:47:30.124Z
+
+## Query
+SELECT id AS game_id, "gameName" AS game_type,
+  (SELECT json_agg(value->'name' ORDER BY key) FROM json_each(players)) AS players,
+  gameover, state->'G'->'game'->'moves' AS moves,
+  state->'G'->>'startedAt' AS started_at, state->'G'->>'endedAt' AS ended_at
+FROM "Games" ORDER BY "createdAt";
+
+## Result
+   game_id   | game_type |        players         |    gameover    |                                                               moves                                                                |        started_at        |         ended_at         
+-------------+-----------+------------------------+----------------+------------------------------------------------------------------------------------------------------------------------------------+--------------------------+--------------------------
+ PZtYp_hKINh | tictactoe | ["Player1", "Player2"] | {"winner":"0"} | [{"x":0,"y":0},{"x":0,"y":1},{"x":1,"y":0},{"x":1,"y":1},{"x":2,"y":0}]                                                            | 2026-10-22T02:47:26.868Z | 2026-10-22T02:47:29.709Z
+ Zy8PpNwkQmJ | gomoku    | ["Player3", "Player4"] | {"winner":"0"} | [{"x":7,"y":7},{"x":7,"y":8},{"x":8,"y":7},{"x":8,"y":8},{"x":9,"y":7},{"x":9,"y":8},{"x":10,"y":7},{"x":10,"y":8},{"x":11,"y":7}] | 2026-10-22T02:47:26.887Z | 2026-10-22T02:47:29.707Z
+(2 rows)
+
+## Checks
+PASS 共有 2 筆對局紀錄（無缺漏、無重複） — 2 筆
+PASS game_id 不重複
+PASS 房間 A（tictactoe） 玩家與執子順序正確 — Player1 → Player2
+PASS 房間 A（tictactoe） 勝者與畫面一致 — winner=Player1
+PASS 房間 A（tictactoe） 棋步數量一致 — 5 手
+PASS 房間 A（tictactoe） 棋步順序與內容一致 — Player1(0,0) Player2(0,1) Player1(1,0) Player2(1,1) Player1(2,0)
+PASS 房間 A（tictactoe） 有 started_at 與 ended_at 且順序正確 — 2026-10-22T02:47:26.868Z → 2026-10-22T02:47:29.709Z
+PASS 房間 A（tictactoe） 不含另一房間的玩家棋步
+PASS 房間 B（gomoku） 玩家與執子順序正確 — Player3 → Player4
+PASS 房間 B（gomoku） 勝者與畫面一致 — winner=Player3
+PASS 房間 B（gomoku） 棋步數量一致 — 9 手
+PASS 房間 B（gomoku） 棋步順序與內容一致 — Player3(7,7) Player4(7,8) Player3(8,7) Player4(8,8) Player3(9,7) Player4(9,8) Player3(10,7) Player4(10,8) Player3(11,7)
+PASS 房間 B（gomoku） 有 started_at 與 ended_at 且順序正確 — 2026-10-22T02:47:26.887Z → 2026-10-22T02:47:29.707Z
+PASS 房間 B（gomoku） 不含另一房間的玩家棋步
+
+## Chat persistence (optional, section 7)
+Not stored: boardgame.io relays chat messages over socket.io without persisting them.
+
+ALL DB CHECKS PASS

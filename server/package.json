@@ -1,0 +1,27 @@
+{
+  "name": "server",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "tsx --test test/*.test.ts",
+    "start": "tsx src/index.ts",
+    "typecheck": "tsc"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "type": "module",
+  "dependencies": {
+    "bgio-postgres": "^1.0.16",
+    "boardgame.io": "^0.50.2",
+    "koa-static": "^5.0.0",
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "@types/koa-static": "^4.0.4",
+    "@types/node": "^20.19.43",
+    "tsx": "^4.23.15",
+    "typescript": "5.9"
+  }
+}
