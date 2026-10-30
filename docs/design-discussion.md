@@ -479,11 +479,83 @@ P2 看到「對手請求悔棋」
   - 用 Playwright 搭配 Chrome DevTools Protocol 模擬網路延遲，驗證延遲補償。
   - 測斷線後時鐘繼續走，以及重連後時間正確。
 
+### 9.7 獨立計時模組
+
+多種遊戲都需要計時，所以計時要和規則模組一樣做成**獨立模組**，不依賴任何框架或遊戲。
+
+在架構中的位置：
+
+| 層 | 和計時的關係 |
+| --- | --- |
+| 規則模組 | **完全不碰時鐘**，只告訴引擎「下一個輪到誰」 |
+| 房間引擎 | 持有一個時鐘，每次換手呼叫時鐘；依時鐘給的截止時刻設計時器 |
+| 計時模組 | 純計算：扣時、讀秒、判定超時，不知道網路和遊戲規則 |
+| 框架轉接層 | 提供計時器：Colyseus 用 `clock.setTimeout`；Nakama 在每個 tick 檢查（低 tick 頻率約 1 秒內發現，和 NNGS 一樣）；boardgame.io 印象中沒有內建伺服器端計時器，要自己補（未查證） |
+
+設計原則：
+
+1. **純函式、注入時間**：所有操作都傳入 `now`，模組自己不讀系統時間、不設計時器。好處是單元測試不用真的等待，幾毫秒就能跑完「讀秒用完判負」這類情境。
+2. **延遲補償由外部傳入**：網路層量出延遲，換手時把 `lagCreditMs` 傳進來；模組只負責套用上限（每手上限、整局上限）。
+3. **不假設兩人**：用座位編號，支援 N 人；也不假設輪流，換手時由引擎指定下一個座位。
+4. **可序列化**：狀態能轉成 JSON 存進資料庫，伺服器重啟或封盤續下時可以還原。
+5. **吐出事件**：進入讀秒、用掉一次讀秒、超時等事件由模組回傳，引擎決定怎麼通知玩家和寫紀錄。
+
+介面草稿（TypeScript）：
+
+```ts
+type Seat = number;
+
+interface ClockConfig {
+  type: "none" | "absolute" | "fischer" | "byoyomi" | "canadian";
+  mainMs: number;
+  periods?: number;        // 日式讀秒次數
+  periodMs?: number;       // 每次讀秒時間
+  stones?: number;         // 加拿大讀秒每時段手數
+  incrementMs?: number;    // Fischer 每手加秒
+  graceMs?: number;        // 超時寬限
+  maxLagCreditPerMoveMs?: number;
+  maxLagCreditPerGameMs?: number;
+}
+
+type ClockEvent =
+  | { type: "entered_overtime"; seat: Seat }
+  | { type: "period_used"; seat: Seat; periodsLeft: number }
+  | { type: "timeout"; seat: Seat };
+
+interface Clock {
+  start(seat: Seat, now: number): void;
+  // 目前的人走完一步，換下一個座位；回傳這手用時與事件
+  switchTo(next: Seat, now: number, lagCreditMs?: number): { usedMs: number; events: ClockEvent[] };
+  pause(now: number): void;
+  resume(now: number): void;
+  addTime(seat: Seat, ms: number): void;
+  // 若沒有人行動，目前的人會在哪個時刻超時；引擎用它設計時器
+  nextDeadline(): number | null;
+  // 檢查是否已超時（計時器觸發或定期掃描時呼叫）
+  check(now: number): ClockEvent[];
+  // 給客戶端顯示用：各座位剩餘時間、讀秒次數、正在走的座位、伺服器時刻
+  snapshot(now: number): ClockSnapshot;
+  toJSON(): ClockState;
+}
+```
+
+各種遊戲的對應：
+
+| 遊戲 | 計時方式 |
+| --- | --- |
+| 圍棋 | 日式讀秒（第一版）、加拿大讀秒 |
+| 五子棋 | 包乾或日式讀秒 |
+| 西洋棋類 | Fischer 加秒 |
+| 德州撲克 | 每次行動限時，超過後扣「時間銀行」；可以看成「先用讀秒、再用基本時間」的變形，之後再加一種類型 |
+
+程式碼共用：PoC 計畫規定各分支各自一份程式碼。不過 Colyseus、boardgame.io 和選用 TypeScript 的 Nakama 都能直接用同一份 TypeScript 計時模組。PoC 之後若決定共用，可以抽成獨立套件。
+
 ## 10. 待辦
 
 - [ ] 把「通用提議機制」寫進房間引擎設計，約局、悔棋、封盤、改貼目、點目確認共用。
 - [ ] 悔棋：依第 8 節實作，並加進 E2E（同意、拒絕、直接落子視為拒絕、點目階段悔棋）。
 - [ ] 計時：依第 9 節實作伺服器時鐘、日式讀秒與延遲補償，並加進 E2E（超時判負、模擬延遲、斷線重連）。
+- [ ] 計時模組：依 9.7 節做成獨立模組，用注入時間的單元測試覆蓋各種計時方式與超時情境。
 - [ ] 圍棋第一版：約局、終局點目、讓子貼目、讀秒、封盤續下、悔棋。
 - [ ] 寫小程式驗證 `tenuki` 的提子、打劫與點目結果。
 - [ ] PoC 結果表記錄三個框架的房間列表更新方式（推送或輪詢）。
