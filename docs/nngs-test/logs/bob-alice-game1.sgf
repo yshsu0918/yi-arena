@@ -1,0 +1,26 @@
+
+(;
+GM[1]FF[4]AP[NNGS:1.1.22]
+US[Brought to you by NNGS unconfigured luser clone]
+CP[
+  Copyright This game was played on NNGS unconfigured luser clone
+  Permission to reproduce this game is given,
+  as long as this copyright notice is preserved.]
+GN[bob-alice(B) NNGS]
+EV[none]
+RE[W+6.5]
+PW[bob]WR[UR ]
+PB[alice]BR[UR ]
+PC[NNGS unconfigured luser clone: nngs.localhost 6969,9696]
+DT[2026-10-30]
+SZ[9]TM[120]KM[6.5]
+
+;B[ee];W[cg]C[
+ carol NR : bob should play tengen (2)
+ alice NR : good luck
+]
+;B[gg];W[tt];B[tt]
+;
+)
+
+---

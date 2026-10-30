@@ -1,0 +1,605 @@
+[alice <<] >>messages/login
+----- Welcome to the No Name Go Server (NNGS) -----
+
+To connect as a guest, please log in with an unusual name
+that is probably not being used by another player.
+
+Login:
+[alice >>] alice
+[alice <<] 
+"alice" is not a registered name.  You may use this name to play unrated games.
+(After logging in, do "help register" for more info on how to register.)
+
+This is a guest account.
+Your account name is alice.
+
+
+>>messages/motd
+
+ For your own protection, please use a password here that you
+ do not use anywhere else. Thank you.
+
+ For more information, point your web browser to: http://nngs.cosmic.org/
+
+ALSO, PLEASE TYPE:  help welcome
+
+
+
+>>messages/unregistered
+If you prefer to remain unregistered, please feel
+free to play or watch games, or to chat with your friends.
+Otherwise, type:
+
+   help register
+
+(If using WinIGC, please type: "help winigc")
+
+Enjoy your visit!
+
+No Name Go Server (NNGS) version 1.1.22
+#>
+[bob <<] >>messages/login
+----- Welcome to the No Name Go Server (NNGS) -----
+
+To connect as a guest, please log in with an unusual name
+that is probably not being used by another player.
+
+Login:
+[bob >>] bob
+[bob <<] 
+"bob" is not a registered name.  You may use this name to play unrated games.
+(After logging in, do "help register" for more info on how to register.)
+
+This is a guest account.
+Your account name is bob.
+
+
+>>messages/motd
+
+ For your own protection, please use a password here that you
+ do not use anywhere else. Thank you.
+
+ For more information, point your web browser to: http://nngs.cosmic.org/
+
+ALSO, PLEASE TYPE:  help welcome
+
+
+
+>>messages/unregistered
+If you prefer to remain unregistered, please feel
+free to play or watch games, or to chat with your friends.
+Otherwise, type:
+
+   help register
+
+(If using WinIGC, please type: "help winigc")
+
+Enjoy your visit!
+
+No Name Go Server (NNGS) version 1.1.22
+#>
+[carol <<] >>messages/login
+----- Welcome to the No Name Go Server (NNGS) -----
+
+To connect as a guest, please log in with an unusual name
+that is probably not being used by another player.
+
+Login:
+[carol >>] carol
+[carol <<] 
+"carol" is not a registered name.  You may use this name to play unrated games.
+(After logging in, do "help register" for more info on how to register.)
+
+This is a guest account.
+Your account name is carol.
+
+
+>>messages/motd
+
+ For your own protection, please use a password here that you
+ do not use anywhere else. Thank you.
+
+ For more information, point your web browser to: http://nngs.cosmic.org/
+
+ALSO, PLEASE TYPE:  help welcome
+
+
+
+>>messages/unregistered
+If you prefer to remain unregistered, please feel
+free to play or watch games, or to chat with your friends.
+Otherwise, type:
+
+   help register
+
+(If using WinIGC, please type: "help winigc")
+
+Enjoy your visit!
+
+No Name Go Server (NNGS) version 1.1.22
+#>
+
+==================== who: list players
+[carol >>] who
+[carol <<]  Info       Name       Idle   Rank |  Info       Name       Idle   Rank
+    --   -- carol       0s     NR  |     --   -- alice       7s     NR   
+    --   -- bob         5s     NR  |                                   
+                ********   3 Players 0 Total Games ********
+#>
+
+==================== alice offers bob: alice black, 9x9, 1 min, 1 min byo-yomi
+[alice >>] match bob B 9 1 1
+[alice <<] 
+{bob [ NR ] has connected.}
+#> 
+{carol [ NR ] has connected.}
+#> Requesting match in 1 min with bob as White.
+
+#>
+[bob <<] 
+{carol [ NR ] has connected.}
+#> Match [9x9] in 1 minutes requested with alice as Black.
+Use <match alice W 9 1 1> or <decline alice> to respond.
+#>
+
+==================== bob checks pending
+[bob >>] pending
+[bob <<] There are no offers pending TO other players.
+Offers FROM other players:
+ 1: alice is offering 1 9 1.
+If you wish to accept any of these offers type 'accept n'
+or just 'accept' if there is only one offer.
+#>
+
+==================== bob counter-offers: 2 min main time
+[bob >>] match alice W 9 2 1
+[bob <<] Declining offer from alice and offering new match parameters.
+Requesting match in 2 min with alice as Black.
+
+#>
+[alice <<] bob declines your request for a match.
+#> Match [9x9] in 2 minutes requested with bob as White.
+Use <match bob B 9 2 1> or <decline bob> to respond.
+#>
+
+==================== alice accepts the counter-offer by sending the identical terms
+[alice >>] match bob B 9 2 1
+[alice <<] Match [1] with bob in 2 accepted.
+#> Creating match [1] with bob.
+#> 
+{Match 1: bob [ NR ] vs. alice [ NR ] }
+#> 
+Game 1 (I): bob [ NR ] vs alice [ NR ]
+    A B C D E F G H J      H-cap 0 Komi  6.5
+ 9 |. . . . . . . . .|  9  Captured by #: 0
+ 8 |. . . . . . . . .|  8  Captured by O: 0
+ 7 |. . + . + . + . .|  7
+ 6 |. . . . . . . . .|  6  Wh Time 02:00
+ 5 |. . + . + . + . .|  5  Bl Time 02:00
+ 4 |. . . . . . . . .|  4
+ 3 |. . + . + . + . .|  3   Last Move:
+ 2 |. . . . . . . . .|  2    #0 O (White)
+ 1 |. . . . . . . . .|  1
+    A B C D E F G H J
+#> 
+#>
+[bob <<] Match [1] with alice in 2 accepted.
+#> Creating match [1] with alice.
+#> 
+{Match 1: bob [ NR ] vs. alice [ NR ] }
+#> 
+Game 1 (I): bob [ NR ] vs alice [ NR ]
+    A B C D E F G H J      H-cap 0 Komi  6.5
+ 9 |. . . . . . . . .|  9  Captured by #: 0
+ 8 |. . . . . . . . .|  8  Captured by O: 0
+ 7 |. . + . + . + . .|  7
+ 6 |. . . . . . . . .|  6  Wh Time 02:00
+ 5 |. . + . + . + . .|  5  Bl Time 02:00
+ 4 |. . . . . . . . .|  4
+ 3 |. . + . + . + . .|  3   Last Move:
+ 2 |. . . . . . . . .|  2    #0 O (White)
+ 1 |. . . . . . . . .|  1
+    A B C D E F G H J
+#>
+[carol <<] 
+{Match 1: bob [ NR ] vs. alice [ NR ] }
+#>
+
+==================== carol lists games and observes game 1
+[carol >>] games
+[carol <<] [##]  white name [ rk ]      black name [ rk ] (Move size H Komi BY FR) (###)
+[ 1]         bob [ NR ] vs.       alice [ NR ] (  0    9  0  6.5  1 FI) (  0)
+#>
+[carol >>] observe 1
+[carol <<] Adding game to observation list.
+
+Game 1 (I): bob [ NR ] vs alice [ NR ]
+    A B C D E F G H J      H-cap 0 Komi  6.5
+ 9 |. . . . . . . . .|  9  Captured by #: 0
+ 8 |. . . . . . . . .|  8  Captured by O: 0
+ 7 |. . + . + . + . .|  7
+ 6 |. . . . . . . . .|  6  Wh Time 02:00
+ 5 |. . + . + . + . .|  5  Bl Time 01:58
+ 4 |. . . . . . . . .|  4
+ 3 |. . + . + . + . .|  3   Last Move:
+ 2 |. . . . . . . . .|  2    #0 O (White)
+ 1 |. . . . . . . . .|  1
+    A B C D E F G H J
+#> #> 
+#>
+
+==================== alice plays E5
+[alice >>] E5
+[alice <<] 
+Game 1 (I): bob [ NR ] vs alice [ NR ]
+    A B C D E F G H J      H-cap 0 Komi  6.5
+ 9 |. . . . . . . . .|  9  Captured by #: 0
+ 8 |. . . . . . . . .|  8  Captured by O: 0
+ 7 |. . + . + . + . .|  7
+ 6 |. . . . . . . . .|  6  Wh Time 02:00
+ 5>|. . + .>#<. + . .|< 5  Bl Time 01:56
+ 4 |. . . . . . . . .|  4
+ 3 |. . + . + . + . .|  3   Last Move: E5
+ 2 |. . . . . . . . .|  2   #1 # (Black)
+ 1 |. . . . . . . . .|  1
+    A B C D E F G H J
+#>
+[bob <<] 
+Game 1 (I): bob [ NR ] vs alice [ NR ]
+    A B C D E F G H J      H-cap 0 Komi  6.5
+ 9 |. . . . . . . . .|  9  Captured by #: 0
+ 8 |. . . . . . . . .|  8  Captured by O: 0
+ 7 |. . + . + . + . .|  7
+ 6 |. . . . . . . . .|  6  Wh Time 02:00
+ 5>|. . + .>#<. + . .|< 5  Bl Time 01:56
+ 4 |. . . . . . . . .|  4
+ 3 |. . + . + . + . .|  3   Last Move: E5
+ 2 |. . . . . . . . .|  2   #1 # (Black)
+ 1 |. . . . . . . . .|  1
+    A B C D E F G H J
+#>
+[carol <<] 
+Game 1 (I): bob [ NR ] vs alice [ NR ]
+    A B C D E F G H J      H-cap 0 Komi  6.5
+ 9 |. . . . . . . . .|  9  Captured by #: 0
+ 8 |. . . . . . . . .|  8  Captured by O: 0
+ 7 |. . + . + . + . .|  7
+ 6 |. . . . . . . . .|  6  Wh Time 02:00
+ 5>|. . + .>#<. + . .|< 5  Bl Time 01:56
+ 4 |. . . . . . . . .|  4
+ 3 |. . + . + . + . .|  3   Last Move: E5
+ 2 |. . . . . . . . .|  2   #1 # (Black)
+ 1 |. . . . . . . . .|  1
+    A B C D E F G H J
+#>
+
+==================== alice tries to play again out of turn
+[alice >>] D4
+[alice <<] It is not your move.
+#>
+
+==================== bob plays C3
+[bob >>] C3
+[bob <<] 
+Game 1 (I): bob [ NR ] vs alice [ NR ]
+    A B C D E F G H J      H-cap 0 Komi  6.5
+ 9 |. . . . . . . . .|  9  Captured by #: 0
+ 8 |. . . . . . . . .|  8  Captured by O: 0
+ 7 |. . + . + . + . .|  7
+ 6 |. . . . . . . . .|  6  Wh Time 01:57
+ 5 |. . + . # . + . .|  5  Bl Time 01:56
+ 4 |. . . . . . . . .|  4
+ 3>|. .>O<. + . + . .|< 3   Last Move: C3
+ 2 |. . . . . . . . .|  2   #2 O (White)
+ 1 |. . . . . . . . .|  1
+    A B C D E F G H J
+#>
+[alice <<] 
+Game 1 (I): bob [ NR ] vs alice [ NR ]
+    A B C D E F G H J      H-cap 0 Komi  6.5
+ 9 |. . . . . . . . .|  9  Captured by #: 0
+ 8 |. . . . . . . . .|  8  Captured by O: 0
+ 7 |. . + . + . + . .|  7
+ 6 |. . . . . . . . .|  6  Wh Time 01:57
+ 5 |. . + . # . + . .|  5  Bl Time 01:56
+ 4 |. . . . . . . . .|  4
+ 3>|. .>O<. + . + . .|< 3   Last Move: C3
+ 2 |. . . . . . . . .|  2   #2 O (White)
+ 1 |. . . . . . . . .|  1
+    A B C D E F G H J
+#>
+[carol <<] 
+Game 1 (I): bob [ NR ] vs alice [ NR ]
+    A B C D E F G H J      H-cap 0 Komi  6.5
+ 9 |. . . . . . . . .|  9  Captured by #: 0
+ 8 |. . . . . . . . .|  8  Captured by O: 0
+ 7 |. . + . + . + . .|  7
+ 6 |. . . . . . . . .|  6  Wh Time 01:57
+ 5 |. . + . # . + . .|  5  Bl Time 01:56
+ 4 |. . . . . . . . .|  4
+ 3>|. .>O<. + . + . .|< 3   Last Move: C3
+ 2 |. . . . . . . . .|  2   #2 O (White)
+ 1 |. . . . . . . . .|  1
+    A B C D E F G H J
+#>
+
+==================== carol kibitzes; do players receive it?
+[carol >>] kibitz bob should play tengen
+[carol <<] 
+#>
+
+==================== alice says something to bob
+[alice >>] say good luck
+[alice <<] 
+#>
+[bob <<] alice good luck
+#>
+
+==================== alice plays a bad move G7, then tries undo herself (not her turn)
+[alice >>] G7
+[alice <<] 
+Game 1 (I): bob [ NR ] vs alice [ NR ]
+    A B C D E F G H J      H-cap 0 Komi  6.5
+ 9 |. . . . . . . . .|  9  Captured by #: 0
+ 8 |. . . . . . . . .|  8  Captured by O: 0
+ 7>|. . + . + .>#<. .|< 7
+ 6 |. . . . . . . . .|  6  Wh Time 01:57
+ 5 |. . + . # . + . .|  5  Bl Time 01:50
+ 4 |. . . . . . . . .|  4
+ 3 |. . O . + . + . .|  3   Last Move: G7
+ 2 |. . . . . . . . .|  2   #3 # (Black)
+ 1 |. . . . . . . . .|  1
+    A B C D E F G H J
+#>
+[bob <<] 
+Game 1 (I): bob [ NR ] vs alice [ NR ]
+    A B C D E F G H J      H-cap 0 Komi  6.5
+ 9 |. . . . . . . . .|  9  Captured by #: 0
+ 8 |. . . . . . . . .|  8  Captured by O: 0
+ 7>|. . + . + .>#<. .|< 7
+ 6 |. . . . . . . . .|  6  Wh Time 01:57
+ 5 |. . + . # . + . .|  5  Bl Time 01:50
+ 4 |. . . . . . . . .|  4
+ 3 |. . O . + . + . .|  3   Last Move: G7
+ 2 |. . . . . . . . .|  2   #3 # (Black)
+ 1 |. . . . . . . . .|  1
+    A B C D E F G H J
+#>
+[alice >>] undo
+[alice <<] It is not your move.
+#>
+
+==================== bob (on move) undoes alice's G7
+[bob >>] undo
+[bob <<] bob undid the last move (G7).
+
+Game 1 (I): bob [ NR ] vs alice [ NR ]
+    A B C D E F G H J      H-cap 0 Komi  6.5
+ 9 |. . . . . . . . .|  9  Captured by #: 0
+ 8 |. . . . . . . . .|  8  Captured by O: 0
+ 7 |. . + . + . + . .|  7
+ 6 |. . . . . . . . .|  6  Wh Time 01:55
+ 5 |. . + . # . + . .|  5  Bl Time 01:50
+ 4 |. . . . . . . . .|  4
+ 3>|. .>O<. + . + . .|< 3   Last Move: C3
+ 2 |. . . . . . . . .|  2   #2 O (White)
+ 1 |. . . . . . . . .|  1
+    A B C D E F G H J
+#> #>
+[alice <<] bob undid the last move (G7).
+
+Game 1 (I): bob [ NR ] vs alice [ NR ]
+    A B C D E F G H J      H-cap 0 Komi  6.5
+ 9 |. . . . . . . . .|  9  Captured by #: 0
+ 8 |. . . . . . . . .|  8  Captured by O: 0
+ 7 |. . + . + . + . .|  7
+ 6 |. . . . . . . . .|  6  Wh Time 01:55
+ 5 |. . + . # . + . .|  5  Bl Time 01:50
+ 4 |. . . . . . . . .|  4
+ 3>|. .>O<. + . + . .|< 3   Last Move: C3
+ 2 |. . . . . . . . .|  2   #2 O (White)
+ 1 |. . . . . . . . .|  1
+    A B C D E F G H J
+#>
+[carol <<] 
+Game 1 (I): bob [ NR ] vs alice [ NR ]
+    A B C D E F G H J      H-cap 0 Komi  6.5
+ 9 |. . . . . . . . .|  9  Captured by #: 0
+ 8 |. . . . . . . . .|  8  Captured by O: 0
+ 7>|. . + . + .>#<. .|< 7
+ 6 |. . . . . . . . .|  6  Wh Time 01:57
+ 5 |. . + . # . + . .|  5  Bl Time 01:50
+ 4 |. . . . . . . . .|  4
+ 3 |. . O . + . + . .|  3   Last Move: G7
+ 2 |. . . . . . . . .|  2   #3 # (Black)
+ 1 |. . . . . . . . .|  1
+    A B C D E F G H J
+#> Undo in game 1: bob vs alice:  G7
+#> 
+Game 1 (I): bob [ NR ] vs alice [ NR ]
+    A B C D E F G H J      H-cap 0 Komi  6.5
+ 9 |. . . . . . . . .|  9  Captured by #: 0
+ 8 |. . . . . . . . .|  8  Captured by O: 0
+ 7 |. . + . + . + . .|  7
+ 6 |. . . . . . . . .|  6  Wh Time 01:55
+ 5 |. . + . # . + . .|  5  Bl Time 01:50
+ 4 |. . . . . . . . .|  4
+ 3>|. .>O<. + . + . .|< 3   Last Move: C3
+ 2 |. . . . . . . . .|  2   #2 O (White)
+ 1 |. . . . . . . . .|  1
+    A B C D E F G H J
+#>
+
+==================== alice plays G3 instead
+[alice >>] G3
+[alice <<] 
+Game 1 (I): bob [ NR ] vs alice [ NR ]
+    A B C D E F G H J      H-cap 0 Komi  6.5
+ 9 |. . . . . . . . .|  9  Captured by #: 0
+ 8 |. . . . . . . . .|  8  Captured by O: 0
+ 7 |. . + . + . + . .|  7
+ 6 |. . . . . . . . .|  6  Wh Time 01:55
+ 5 |. . + . # . + . .|  5  Bl Time 01:48
+ 4 |. . . . . . . . .|  4
+ 3>|. . O . + .>#<. .|< 3   Last Move: G3
+ 2 |. . . . . . . . .|  2   #3 # (Black)
+ 1 |. . . . . . . . .|  1
+    A B C D E F G H J
+#>
+[bob <<] 
+Game 1 (I): bob [ NR ] vs alice [ NR ]
+    A B C D E F G H J      H-cap 0 Komi  6.5
+ 9 |. . . . . . . . .|  9  Captured by #: 0
+ 8 |. . . . . . . . .|  8  Captured by O: 0
+ 7 |. . + . + . + . .|  7
+ 6 |. . . . . . . . .|  6  Wh Time 01:55
+ 5 |. . + . # . + . .|  5  Bl Time 01:48
+ 4 |. . . . . . . . .|  4
+ 3>|. . O . + .>#<. .|< 3   Last Move: G3
+ 2 |. . . . . . . . .|  2   #3 # (Black)
+ 1 |. . . . . . . . .|  1
+    A B C D E F G H J
+#>
+[carol <<] 
+Game 1 (I): bob [ NR ] vs alice [ NR ]
+    A B C D E F G H J      H-cap 0 Komi  6.5
+ 9 |. . . . . . . . .|  9  Captured by #: 0
+ 8 |. . . . . . . . .|  8  Captured by O: 0
+ 7 |. . + . + . + . .|  7
+ 6 |. . . . . . . . .|  6  Wh Time 01:55
+ 5 |. . + . # . + . .|  5  Bl Time 01:48
+ 4 |. . . . . . . . .|  4
+ 3>|. . O . + .>#<. .|< 3   Last Move: G3
+ 2 |. . . . . . . . .|  2   #3 # (Black)
+ 1 |. . . . . . . . .|  1
+    A B C D E F G H J
+#>
+
+==================== time check
+[bob >>] time
+[bob <<] Game : 1
+White(bob) : 1:00
+Black(alice) : 1:00
+#>
+
+==================== bob passes, alice passes -> scoring
+[bob >>] pass
+[bob <<] 
+Game 1 (I): bob [ NR ] vs alice [ NR ]
+    A B C D E F G H J      H-cap 0 Komi  6.5
+ 9 |. . . . . . . . .|  9  Captured by #: 0
+ 8 |. . . . . . . . .|  8  Captured by O: 0
+ 7 |. . + . + . + . .|  7
+ 6 |. . . . . . . . .|  6  Wh Time 01:53
+ 5 |. . + . # . + . .|  5  Bl Time 01:48
+ 4 |. . . . . . . . .|  4
+ 3 |. . O . + . # . .|  3   Last Move: Pass
+ 2 |. . . . . . . . .|  2   #4 O (White)
+ 1 |. . . . . . . . .|  1
+    A B C D E F G H J
+#>
+[alice >>] pass
+[alice <<] 
+Game 1 (I): bob [ NR ] vs alice [ NR ]
+    A B C D E F G H J      H-cap 0 Komi  6.5
+ 9 |. . . . . . . . .|  9  Captured by #: 0
+ 8 |. . . . . . . . .|  8  Captured by O: 0
+ 7 |. . + . + . + . .|  7
+ 6 |. . . . . . . . .|  6  Wh Time 01:53
+ 5 |. . + . # . + . .|  5  Bl Time 01:48
+ 4 |. . . . . . . . .|  4
+ 3 |. . O . + . # . .|  3   Last Move: Pass
+ 2 |. . . . . . . . .|  2   #4 O (White)
+ 1 |. . . . . . . . .|  1
+    A B C D E F G H J
+#> You can check your score with the score command, type 'done' when finished.
+Enter Dead Group: 
+Game 1 (I): bob [ NR ] vs alice [ NR ]
+    A B C D E F G H J      H-cap 0 Komi  6.5
+ 9 |. . . . . . . . .|  9  Captured by #: 0
+ 8 |. . . . . . . . .|  8  Captured by O: 0
+ 7 |. . + . + . + . .|  7
+ 6 |. . . . . . . . .|  6  Wh Time 01:53
+ 5 |. . + . # . + . .|  5  Bl Time 01:48
+ 4 |. . . . . . . . .|  4
+ 3 |. . O . + . # . .|  3   Last Move: Pass
+ 2 |. . . . . . . . .|  2   #5 # (Black)
+ 1 |. . . . . . . . .|  1
+    A B C D E F G H J
+Enter Dead Group:
+[bob <<] You can check your score with the score command, type 'done' when finished.
+Enter Dead Group: 
+Game 1 (I): bob [ NR ] vs alice [ NR ]
+    A B C D E F G H J      H-cap 0 Komi  6.5
+ 9 |. . . . . . . . .|  9  Captured by #: 0
+ 8 |. . . . . . . . .|  8  Captured by O: 0
+ 7 |. . + . + . + . .|  7
+ 6 |. . . . . . . . .|  6  Wh Time 01:53
+ 5 |. . + . # . + . .|  5  Bl Time 01:48
+ 4 |. . . . . . . . .|  4
+ 3 |. . O . + . # . .|  3   Last Move: Pass
+ 2 |. . . . . . . . .|  2   #5 # (Black)
+ 1 |. . . . . . . . .|  1
+    A B C D E F G H J
+Enter Dead Group:
+[carol <<] 
+Game 1 (I): bob [ NR ] vs alice [ NR ]
+    A B C D E F G H J      H-cap 0 Komi  6.5
+ 9 |. . . . . . . . .|  9  Captured by #: 0
+ 8 |. . . . . . . . .|  8  Captured by O: 0
+ 7 |. . + . + . + . .|  7
+ 6 |. . . . . . . . .|  6  Wh Time 01:53
+ 5 |. . + . # . + . .|  5  Bl Time 01:48
+ 4 |. . . . . . . . .|  4
+ 3 |. . O . + . # . .|  3   Last Move: Pass
+ 2 |. . . . . . . . .|  2   #4 O (White)
+ 1 |. . . . . . . . .|  1
+    A B C D E F G H J
+#> 
+Game 1 (I): bob [ NR ] vs alice [ NR ]
+    A B C D E F G H J      H-cap 0 Komi  6.5
+ 9 |. . . . . . . . .|  9  Captured by #: 0
+ 8 |. . . . . . . . .|  8  Captured by O: 0
+ 7 |. . + . + . + . .|  7
+ 6 |. . . . . . . . .|  6  Wh Time 01:53
+ 5 |. . + . # . + . .|  5  Bl Time 01:48
+ 4 |. . . . . . . . .|  4
+ 3 |. . O . + . # . .|  3   Last Move: Pass
+ 2 |. . . . . . . . .|  2   #5 # (Black)
+ 1 |. . . . . . . . .|  1
+    A B C D E F G H J
+#>
+
+==================== both type done
+[alice >>] done
+[alice <<] 
+Enter Dead Group:
+[bob >>] done
+[bob <<] Enter Dead Group: bob (W:O): 6.5 to alice (B:#): 0.0
+alice has resigned the game.
+
+{Game 1: bob vs alice : Black resigns. W 6.5 B 0.0}
+Enter Dead Group: {Game 1: bob vs alice : Black resigns. W 6.5 B 0.0}
+Enter Dead Group: 
+#> 
+#>
+[alice <<] bob (W:O): 6.5 to alice (B:#): 0.0
+alice has resigned the game.
+
+{Game 1: bob vs alice : Black resigns. W 6.5 B 0.0}
+Enter Dead Group: {Game 1: bob vs alice : Black resigns. W 6.5 B 0.0}
+Enter Dead Group: 
+#>
+[carol <<] 
+{Game 1: bob vs alice : Black resigns. W 6.5 B 0.0}
+#>
+
+==================== results / sgf listing
+[alice >>] results
+[alice <<] #>
+[alice >>] sgf
+[alice <<] Completed games for alice:
+        bob-alice-202610301436
+Found 1 completed games.
+
+#>

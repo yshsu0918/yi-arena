@@ -1,0 +1,390 @@
+[dave <<] >>messages/login
+----- Welcome to the No Name Go Server (NNGS) -----
+
+To connect as a guest, please log in with an unusual name
+that is probably not being used by another player.
+
+Login:
+[dave >>] dave
+[dave <<] 
+"dave" is not a registered name.  You may use this name to play unrated games.
+(After logging in, do "help register" for more info on how to register.)
+
+This is a guest account.
+Your account name is dave.
+
+
+>>messages/motd
+
+ For your own protection, please use a password here that you
+ do not use anywhere else. Thank you.
+
+ For more information, point your web browser to: http://nngs.cosmic.org/
+
+ALSO, PLEASE TYPE:  help welcome
+
+
+
+>>messages/unregistered
+If you prefer to remain unregistered, please feel
+free to play or watch games, or to chat with your friends.
+Otherwise, type:
+
+   help register
+
+(If using WinIGC, please type: "help winigc")
+
+Enjoy your visit!
+
+No Name Go Server (NNGS) version 1.1.22
+#>
+[erin <<] >>messages/login
+----- Welcome to the No Name Go Server (NNGS) -----
+
+To connect as a guest, please log in with an unusual name
+that is probably not being used by another player.
+
+Login:
+[erin >>] erin
+[erin <<] 
+"erin" is not a registered name.  You may use this name to play unrated games.
+(After logging in, do "help register" for more info on how to register.)
+
+This is a guest account.
+Your account name is erin.
+
+
+>>messages/motd
+
+ For your own protection, please use a password here that you
+ do not use anywhere else. Thank you.
+
+ For more information, point your web browser to: http://nngs.cosmic.org/
+
+ALSO, PLEASE TYPE:  help welcome
+
+
+
+>>messages/unregistered
+If you prefer to remain unregistered, please feel
+free to play or watch games, or to chat with your friends.
+Otherwise, type:
+
+   help register
+
+(If using WinIGC, please type: "help winigc")
+
+Enjoy your visit!
+
+No Name Go Server (NNGS) version 1.1.22
+#>
+
+==================== dave offers erin 9x9, 1 min, 0 byo-yomi; erin accepts
+[dave >>] match erin B 9 1 0
+[dave <<] 
+{erin [ NR ] has connected.}
+#> Requesting match in 1 min with erin as White.
+
+#>
+[erin >>] match dave W 9 1 0
+[erin <<] Match [9x9] in 1 minutes requested with dave as Black.
+Use <match dave W 9 1 0> or <decline dave> to respond.
+#> Match [2] with dave in 1 accepted.
+#> Creating match [2] with dave.
+#> 
+{Match 2: erin [ NR ] vs. dave [ NR ] }
+#> 
+Game 2 (I): erin [ NR ] vs dave [ NR ]
+    A B C D E F G H J      H-cap 0 Komi  6.5
+ 9 |. . . . . . . . .|  9  Captured by #: 0
+ 8 |. . . . . . . . .|  8  Captured by O: 0
+ 7 |. . + . + . + . .|  7
+ 6 |. . . . . . . . .|  6  Wh Time 01:00
+ 5 |. . + . + . + . .|  5  Bl Time 01:00
+ 4 |. . . . . . . . .|  4
+ 3 |. . + . + . + . .|  3   Last Move:
+ 2 |. . . . . . . . .|  2    #0 O (White)
+ 1 |. . . . . . . . .|  1
+    A B C D E F G H J
+#> 
+#>
+[dave <<] Match [2] with erin in 1 accepted.
+#> Creating match [2] with erin.
+#> 
+{Match 2: erin [ NR ] vs. dave [ NR ] }
+#> 
+Game 2 (I): erin [ NR ] vs dave [ NR ]
+    A B C D E F G H J      H-cap 0 Komi  6.5
+ 9 |. . . . . . . . .|  9  Captured by #: 0
+ 8 |. . . . . . . . .|  8  Captured by O: 0
+ 7 |. . + . + . + . .|  7
+ 6 |. . . . . . . . .|  6  Wh Time 01:00
+ 5 |. . + . + . + . .|  5  Bl Time 01:00
+ 4 |. . . . . . . . .|  4
+ 3 |. . + . + . + . .|  3   Last Move:
+ 2 |. . . . . . . . .|  2    #0 O (White)
+ 1 |. . . . . . . . .|  1
+    A B C D E F G H J
+#>
+[frank <<] >>messages/login
+----- Welcome to the No Name Go Server (NNGS) -----
+
+To connect as a guest, please log in with an unusual name
+that is probably not being used by another player.
+
+Login:
+[frank >>] frank
+[frank <<] 
+"frank" is not a registered name.  You may use this name to play unrated games.
+(After logging in, do "help register" for more info on how to register.)
+
+This is a guest account.
+Your account name is frank.
+
+
+>>messages/motd
+
+ For your own protection, please use a password here that you
+ do not use anywhere else. Thank you.
+
+ For more information, point your web browser to: http://nngs.cosmic.org/
+
+ALSO, PLEASE TYPE:  help welcome
+
+
+
+>>messages/unregistered
+If you prefer to remain unregistered, please feel
+free to play or watch games, or to chat with your friends.
+Otherwise, type:
+
+   help register
+
+(If using WinIGC, please type: "help winigc")
+
+Enjoy your visit!
+
+No Name Go Server (NNGS) version 1.1.22
+#>
+[gina <<] >>messages/login
+----- Welcome to the No Name Go Server (NNGS) -----
+
+To connect as a guest, please log in with an unusual name
+that is probably not being used by another player.
+
+Login:
+[gina >>] gina
+[gina <<] 
+"gina" is not a registered name.  You may use this name to play unrated games.
+(After logging in, do "help register" for more info on how to register.)
+
+This is a guest account.
+Your account name is gina.
+
+
+>>messages/motd
+
+ For your own protection, please use a password here that you
+ do not use anywhere else. Thank you.
+
+ For more information, point your web browser to: http://nngs.cosmic.org/
+
+ALSO, PLEASE TYPE:  help welcome
+
+
+
+>>messages/unregistered
+If you prefer to remain unregistered, please feel
+free to play or watch games, or to chat with your friends.
+Otherwise, type:
+
+   help register
+
+(If using WinIGC, please type: "help winigc")
+
+Enjoy your visit!
+
+No Name Go Server (NNGS) version 1.1.22
+#>
+
+==================== frank vs gina 9x9, 10 min, 10 min byo-yomi; frank plays E5
+[frank >>] match gina B 9 10 10
+[frank <<] 
+{gina [ NR ] has connected.}
+#> Requesting match in 10 min with gina as White.
+
+#>
+[gina >>] match frank W 9 10 10
+[gina <<] Match [9x9] in 10 minutes requested with frank as Black.
+Use <match frank W 9 10 10> or <decline frank> to respond.
+#> Match [3] with frank in 10 accepted.
+#> Creating match [3] with frank.
+#> 
+{Match 3: gina [ NR ] vs. frank [ NR ] }
+#> 
+Game 3 (I): gina [ NR ] vs frank [ NR ]
+    A B C D E F G H J      H-cap 0 Komi  6.5
+ 9 |. . . . . . . . .|  9  Captured by #: 0
+ 8 |. . . . . . . . .|  8  Captured by O: 0
+ 7 |. . + . + . + . .|  7
+ 6 |. . . . . . . . .|  6  Wh Time 10:00
+ 5 |. . + . + . + . .|  5  Bl Time 10:00
+ 4 |. . . . . . . . .|  4
+ 3 |. . + . + . + . .|  3   Last Move:
+ 2 |. . . . . . . . .|  2    #0 O (White)
+ 1 |. . . . . . . . .|  1
+    A B C D E F G H J
+#> 
+#>
+[frank <<] Match [3] with gina in 10 accepted.
+#> Creating match [3] with gina.
+#> 
+{Match 3: gina [ NR ] vs. frank [ NR ] }
+#> 
+Game 3 (I): gina [ NR ] vs frank [ NR ]
+    A B C D E F G H J      H-cap 0 Komi  6.5
+ 9 |. . . . . . . . .|  9  Captured by #: 0
+ 8 |. . . . . . . . .|  8  Captured by O: 0
+ 7 |. . + . + . + . .|  7
+ 6 |. . . . . . . . .|  6  Wh Time 10:00
+ 5 |. . + . + . + . .|  5  Bl Time 10:00
+ 4 |. . . . . . . . .|  4
+ 3 |. . + . + . + . .|  3   Last Move:
+ 2 |. . . . . . . . .|  2    #0 O (White)
+ 1 |. . . . . . . . .|  1
+    A B C D E F G H J
+#>
+[frank >>] E5
+[frank <<] 
+Game 3 (I): gina [ NR ] vs frank [ NR ]
+    A B C D E F G H J      H-cap 0 Komi  6.5
+ 9 |. . . . . . . . .|  9  Captured by #: 0
+ 8 |. . . . . . . . .|  8  Captured by O: 0
+ 7 |. . + . + . + . .|  7
+ 6 |. . . . . . . . .|  6  Wh Time 10:00
+ 5>|. . + .>#<. + . .|< 5  Bl Time 09:58
+ 4 |. . . . . . . . .|  4
+ 3 |. . + . + . + . .|  3   Last Move: E5
+ 2 |. . . . . . . . .|  2   #1 # (Black)
+ 1 |. . . . . . . . .|  1
+    A B C D E F G H J
+#>
+[gina <<] 
+Game 3 (I): gina [ NR ] vs frank [ NR ]
+    A B C D E F G H J      H-cap 0 Komi  6.5
+ 9 |. . . . . . . . .|  9  Captured by #: 0
+ 8 |. . . . . . . . .|  8  Captured by O: 0
+ 7 |. . + . + . + . .|  7
+ 6 |. . . . . . . . .|  6  Wh Time 10:00
+ 5>|. . + .>#<. + . .|< 5  Bl Time 09:58
+ 4 |. . . . . . . . .|  4
+ 3 |. . + . + . + . .|  3   Last Move: E5
+ 2 |. . . . . . . . .|  2   #1 # (Black)
+ 1 |. . . . . . . . .|  1
+    A B C D E F G H J
+#>
+
+==================== frank's connection drops
+[gina <<] Game has been adjourned.
+Game 3: gina vs frank : has adjourned.
+
+{Game 3: gina vs frank : has adjourned.}
+#> {Game 3: gina vs frank : has adjourned.}
+#> 
+#>
+
+==================== gina lists stored games
+[gina >>] stored
+[gina <<] Stored games for gina:
+Found 0 stored games.
+
+#>
+
+==================== frank reconnects and loads the game
+[frank <<] >>messages/login
+----- Welcome to the No Name Go Server (NNGS) -----
+
+To connect as a guest, please log in with an unusual name
+that is probably not being used by another player.
+
+Login:
+[frank >>] frank
+[frank <<] 
+"frank" is not a registered name.  You may use this name to play unrated games.
+(After logging in, do "help register" for more info on how to register.)
+
+This is a guest account.
+Your account name is frank.
+
+
+>>messages/motd
+
+ For your own protection, please use a password here that you
+ do not use anywhere else. Thank you.
+
+ For more information, point your web browser to: http://nngs.cosmic.org/
+
+ALSO, PLEASE TYPE:  help welcome
+
+
+
+>>messages/unregistered
+If you prefer to remain unregistered, please feel
+free to play or watch games, or to chat with your friends.
+Otherwise, type:
+
+   help register
+
+(If using WinIGC, please type: "help winigc")
+
+Enjoy your visit!
+
+No Name Go Server (NNGS) version 1.1.22
+#>
+[frank >>] load gina-frank
+[frank <<] You cannot load someone else's game.  Try "look" to see the game.
+#>
+[gina <<] 
+{frank [ NR ] has connected.}
+#>
+
+==================== waiting 75 s without any move in dave-erin (no 'time' command)
+[dave <<] 
+{frank [ NR ] has connected.}
+#> 
+{gina [ NR ] has connected.}
+#> 
+{Match 3: gina [ NR ] vs. frank [ NR ] }
+#> 
+{Game 3: gina vs frank : has adjourned.}
+#> 
+{frank [ NR ] has connected.}
+#>
+[erin <<] 
+{frank [ NR ] has connected.}
+#> 
+{gina [ NR ] has connected.}
+#> 
+{Match 3: gina [ NR ] vs. frank [ NR ] }
+#> 
+{Game 3: gina vs frank : has adjourned.}
+#> 
+{frank [ NR ] has connected.}
+#>
+[dave <<] The player dave is now in byo-yomi.You have 25 stones and 0 minutes.
+#> 
+{Game 2: erin vs dave : Black forfeits on time.}
+#> {Game 2: erin vs dave : Black forfeits on time.}
+#> 
+#>
+[erin <<] The player dave is now in byo-yomi.He has 25 stones and 0 minutes.
+#> 
+{Game 2: erin vs dave : Black forfeits on time.}
+#> {Game 2: erin vs dave : Black forfeits on time.}
+#> 
+#>
+
+==================== after waiting: games list
+[erin >>] games
+[erin <<] [##]  white name [ rk ]      black name [ rk ] (Move size H Komi BY FR) (###)
+#>
