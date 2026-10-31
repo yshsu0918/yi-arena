@@ -2,7 +2,7 @@
 
 > 整理日期：2026-10-31。狀態：**草案，尚未實作，兩個關鍵假設尚未實驗驗證**（見第 9 節）。
 > 前一版：[architecture.md](architecture.md)（大廳與對局都在 Colyseus）。兩者差異見第 10 節。
-> 本版只畫圍棋；五子棋、井字棋等其他遊戲之後再補回來。
+> 本版涵蓋圍棋與五子棋（freestyle）；井字棋等其他遊戲之後再補。流程圖以圍棋為例，因為它多了點目階段，最複雜。
 > 圖中的函式、訊息名稱都是**虛擬碼**。
 
 ## 1. 為什麼改架構
@@ -19,7 +19,7 @@
 flowchart TB
   subgraph Browser["瀏覽器（Vue）"]
     LobbyUI["大廳畫面"]
-    GameUI["對局畫面<br/>goban 棋盤：先檢查、先擺子"]
+    GameUI["對局畫面<br/>圍棋：goban 棋盤<br/>五子棋：自製棋盤<br/>都先檢查、先擺子"]
   end
 
   subgraph LobbySvc["大廳服務：Colyseus（Node.js）"]
@@ -35,7 +35,7 @@ flowchart TB
     Clock["計時模組"]
   end
 
-  Rules["規則服務：Node.js + goban-engine<br/>無狀態，可開多個"]
+  Rules["規則服務：Node.js（無狀態，可開多個）<br/>go → goban-engine<br/>gomoku → 五子棋模組"]
   DB[("PostgreSQL<br/>對局紀錄、動作紀錄")]
 
   LobbyUI <-- "WebSocket" --> LobbyRoom
@@ -55,8 +55,8 @@ flowchart TB
 | --- | --- | --- |
 | 大廳服務（Colyseus） | 玩家上下線與狀態、邀局、自動配對、房間列表推送、簽發入場券 | 棋盤、計時、對局中的任何判定 |
 | 遊戲引擎（Go） | 房間的生命週期、座位、計時器、提議（點目確認、之後的悔棋）、聊天、寫紀錄 | 規則本身、大廳列表 |
-| 規則服務（Node） | 給棋譜和下一手，回答合不合法、下完的棋盤、階段、計分 | 任何狀態（每次從棋譜重放） |
-| 前端 | 顯示；用 `goban` 先檢查、先擺子 | 判定結果（以伺服器為準） |
+| 規則服務（Node） | 依遊戲類型分派到對應模組；給棋譜和下一手，回答合不合法、下完的棋盤、階段、結果 | 任何狀態（每次從棋譜重放） |
+| 前端 | 顯示；用和後端同一份規則先檢查、先擺子（圍棋用 `goban`，五子棋用五子棋模組） | 判定結果（以伺服器為準） |
 
 ## 3. 遊戲引擎內部（Go）
 
@@ -128,8 +128,15 @@ POST /rooms
 
 ### 4.5 引擎 → 規則服務（無狀態 RPC）
 
+規則服務依 `game` 分派：
+
+| `game` | 模組 | 階段 |
+| --- | --- | --- |
+| `go` | `goban-engine`（OGS） | 對局 → 標記死子 → 結束 |
+| `gomoku` | 五子棋模組（沿用 PoC 的 `rules.ts`，15 路、連五以上獲勝、無禁手） | 對局 → 結束 |
+
 ```text
-apply({ game: "go", settings, moves: [...棋譜], action })
+apply({ game: "go" | "gomoku", settings, moves: [...棋譜], action })
   → { ok, error_code?, phase, board, captures, result? }
 
 score({ game: "go", settings, moves, dead_stones })
@@ -138,7 +145,9 @@ score({ game: "go", settings, moves, dead_stones })
 
 - 每次都帶完整棋譜，規則服務重放後檢查下一手，不保存任何狀態。
 - 可以加快取（房間 ID + 手數 → 狀態），對不上才重放。快取只是加速，不是必要的。
-- 前端的 `goban` 和規則服務的 `goban-engine` 必須鎖定同一版本。
+- 前端和規則服務的規則程式碼必須鎖定同一版本：圍棋是 `goban` 與 `goban-engine`，五子棋是同一份五子棋模組。
+- `score` 只有圍棋會用到；五子棋在 `apply` 回傳 `result` 就結束。
+- 遊戲引擎不判斷遊戲類型，只看規則服務回傳的 `phase` 和 `result`。五子棋可以用來檢驗引擎有沒有寫死圍棋的假設（例如點目階段）。
 
 ## 5. 流程：邀請到開局
 
@@ -277,4 +286,4 @@ sequenceDiagram
 | 狀態同步 | 同一程序，不需要 | 引擎 → 大廳事件 + 定期對帳 |
 | 重啟影響 | 程序重啟，大廳和對局一起中斷 | 大廳、引擎可分別重啟 |
 | 前端先擺子 | 未設計 | `goban` 先檢查、先擺子，用 seq 對帳 |
-| 遊戲範圍 | 圍棋，加上五子棋、井字棋 | 只畫圍棋 |
+| 遊戲範圍 | 圍棋、五子棋、井字棋 | 圍棋、五子棋（井字棋之後再補） |
