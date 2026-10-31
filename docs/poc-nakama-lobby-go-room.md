@@ -1,6 +1,7 @@
 # PoC 規格：Nakama 大廳 + Go 房間服務
 
 > 給負責實作的 AI 閱讀。整理日期：2026-10-31（同日補上：棋譜由房間記錄）。分支：`poc/nakama-lobby-go-room`（從 `main` 開出）。
+> **執行時機**：依 `main` 分支的 `docs/roadmap.md`，第一個版本先用自己寫的 Go 大廳，本規格留到里程碑 3（需要好友、私訊等社群功能時）才執行，且驗證以一週為上限。
 > 本文件只描述要做什麼、怎麼驗收，不含程式碼。實作細節由你決定，但必須符合第 4 節的限制與第 8 節的驗收條件。
 
 ## 0. 給實作者的工作方式
@@ -38,9 +39,10 @@
 
 | 分支 | 路徑 | 用途 |
 | --- | --- | --- |
-| `docs/arch2-revision` | `docs/arch2.md` | 三分離架構的完整設計：名詞（第 0 節）、房間事件、入場券、事件序號、對帳、超時判定。本 PoC 的房間服務與協定以它為準，但大廳換成 Nakama |
+| `main` | `docs/architecture_v1.md` | 三分離架構的完整設計：名詞（第 0 節）、房間事件、入場券、事件序號、對帳、超時判定。本 PoC 的房間服務與協定以它為準，但大廳換成 Nakama |
 | `poc/go-lobby` | `docs/poc-go-lobby.md`、`go-lobby/` | Go 房間 goroutine、閘道、送出佇列、慢連線踢除、機器人測試程式的寫法與結果，可以直接參考 |
 | `poc/nakama` | `docker-compose.yml`、`server/`、`test-screenshot/README.md` | Nakama 3.41.0 的 Docker 啟動方式、先前遇到的問題（例如前端漏收第一個狀態） |
+| `main` | `docs/roadmap.md` | 路線與里程碑；本規格屬於里程碑 3 |
 | `main` | `docs/design-discussion.md` | 邀局、觀戰、計時等設計討論 |
 
 ## 3. 架構
@@ -137,7 +139,7 @@ flowchart TB
 
 ### 5.2 房間服務（Go）
 
-沿用 `poc/go-lobby` 的房間模型與 `docs/arch2.md`（`docs/arch2-revision` 分支）的協定：
+沿用 `poc/go-lobby` 的房間模型與 `docs/architecture_v1.md`（`main` 分支）的協定：
 
 **gRPC 服務（給大廳呼叫）**
 
@@ -301,4 +303,4 @@ flowchart TB
 6. **怎麼執行**。
 7. **沒做到的部分**與原因。
 
-用詞請遵守 `docs/arch2.md` 第 0 節（`docs/arch2-revision` 分支）：大廳、房間、規則；不使用「引擎」一詞（套件名稱除外）。
+用詞請遵守 `docs/architecture_v1.md` 第 0 節（`main` 分支）：大廳、房間、規則；不使用「引擎」一詞（套件名稱除外）。
