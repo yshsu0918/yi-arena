@@ -168,7 +168,7 @@ GameModule
 3. 同時把「遊戲邏輯模組介面」定稿，確保規則模組不依賴任何底座，這樣之後換底座時規則程式碼可以保留。
 4. 若實驗不順，備案是 Colyseus（要自建帳號與積分）或自己用 Go 寫大廳。
 5. 三種框架（Nakama、Colyseus、boardgame.io）的比較實驗依 [PoC 測試計畫](poc-test-plan.md) 進行。
-6. 通用房間引擎、圍棋邀局與 NNGS 參考，見 [設計討論紀錄](design-discussion.md)。
+6. 通用房間引擎、圍棋邀局與 NNGS 參考，見 [設計討論紀錄](../design-discussion.md)。
 
 ## 附錄 A：來源專案（五子棋對戰）已定決策
 

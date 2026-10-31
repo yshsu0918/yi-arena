@@ -1,8 +1,8 @@
-# 架構草案 v2：大廳服務 + 房間服務 + 規則服務
+# 架構 v1：大廳服務 + 房間服務 + 規則服務
 
 > 整理日期：2026-10-31（同日修訂：補上觀戰、開放房間、版本號、到場時限；終局改為自動判死子、雙方確認；統一用詞；修正超時判定；棋譜由房間記錄）。
 > 狀態：**草案，尚未實作，關鍵假設尚未完全驗證**（見第 10 節）。
-> 前一版：[architecture.md](architecture.md)（大廳與對局都在 Colyseus）。兩者差異見第 12 節。
+> 前一版草案：[history/architecture-colyseus.md](history/architecture-colyseus.md)（大廳與對局都在 Colyseus，已不採用）。兩者差異見第 12 節。
 > **2026-10-31 決定**：大廳改為自己寫的薄 Go 大廳（不用 Colyseus），三個服務依「第 2 層分離」獨立，服務之間用 gRPC。路線與理由見 [roadmap.md](roadmap.md)。
 > 本版涵蓋圍棋與五子棋（freestyle）；井字棋等其他遊戲之後再補。流程圖以圍棋為例，因為它多了終局確認階段，最複雜。
 > 圖中的函式、訊息名稱都是**虛擬碼**。
@@ -323,7 +323,7 @@ sequenceDiagram
   end
 ```
 
-拒絕、還價、逾時的分支與 [architecture.md](architecture.md) 3.1 節相同，都在大廳內處理，不會建房。
+拒絕、還價、逾時的分支與 [舊版草案](history/architecture-colyseus.md) 3.1 節相同，都在大廳內處理，不會建房。
 
 ### 6.2 開放房間
 
@@ -488,11 +488,11 @@ sequenceDiagram
 - **不公開、不開放觀戰**：做成建房選項的時機。
 - **延遲直播**：重要對局讓觀戰者晚幾手看到，降低場外報招的風險。第一版不做。
 - **維運**：三個服務、兩種語言，加上反向代理與資料庫，部署、監控、日誌怎麼規劃。
-- **舊文件用詞**：設計討論紀錄與 architecture.md 中的「房間引擎」，等同本文件的「房間」。
+- **舊文件用詞**：[設計討論紀錄](design-discussion.md) 與 `history/` 中的「房間引擎」，等同本文件的「房間」。
 
-## 12. 與 architecture.md 的差異
+## 12. 與舊版草案（Colyseus）的差異
 
-| 項目 | architecture.md（v1） | arch2.md（本版） |
+| 項目 | 舊版草案（[history/architecture-colyseus.md](history/architecture-colyseus.md)） | 本版 |
 | --- | --- | --- |
 | 對局在哪裡跑 | Colyseus 的 GameRoom（Node） | 房間服務（Go），每個房間一個 goroutine |
 | 服務數量 | 1 個 Node 程序 | 3 個獨立服務：大廳服務（Go）、房間服務（Go）、規則服務池（Node），服務之間用 gRPC |

@@ -3,7 +3,7 @@
 > 測試日期：2026-10-30。版本：NNGS 1.1.22（SourceForge 最新版，2009 年）。
 > 環境：Ubuntu 24.04、gcc 13.3。所有玩家都是訪客帳號，對局皆不計分。
 
-結論與設計上的取捨見 [設計討論紀錄](../design-discussion.md) 第 5.6、5.7 節。
+結論與設計上的取捨見 [設計討論紀錄](../../design-discussion.md) 第 5.6、5.7 節。
 
 ## 目錄
 
@@ -25,7 +25,7 @@ tar -xzf nngs.tar.gz && cd nngs-1.1.22
 
 # 2. mlrate 已找不到下載，改用空殼
 mkdir -p mlrate/src
-cp <repo>/docs/nngs-test/mlrate-stub/* mlrate/src/
+cp <repo>/docs/history/nngs-test/mlrate-stub/* mlrate/src/
 gcc -c -o mlrate/src/rdbm_stub.o mlrate/src/rdbm_stub.c
 ar rcs mlrate/src/libmlr.a mlrate/src/rdbm_stub.o
 
@@ -46,8 +46,8 @@ for c in {a..z}; do mkdir -p nngssrv/players/$c nngssrv/games/$c nngssrv/cgames/
 mkdir -p ../run && cd ../run && ../install/bin/nngssrv &
 
 # 6. 跑測試腳本
-python3 <repo>/docs/nngs-test/scripts/nngs_scenario1.py scenario1.log
-python3 <repo>/docs/nngs-test/scripts/nngs_scenario2.py scenario2.log   # 約需 80 秒
+python3 <repo>/docs/history/nngs-test/scripts/nngs_scenario1.py scenario1.log
+python3 <repo>/docs/history/nngs-test/scripts/nngs_scenario2.py scenario2.log   # 約需 80 秒
 ```
 
 編譯時遇到的問題：

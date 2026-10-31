@@ -1,7 +1,9 @@
 # 架構草案：Colyseus 版（圍棋第一版）
 
+> **已不採用**（2026-10-31）。目前的架構見 [architecture_v1.md](../architecture_v1.md)，路線見 [roadmap.md](../roadmap.md)。
+
 > 整理日期：2026-10-30。狀態：**草案，尚未實作**。
-> 依據：[設計討論紀錄](design-discussion.md)（第 2～4、8～10 節）與 `poc/colyseus` 分支的結構（`Lobby.ts`、`GameRoom.ts`、`rules.ts`、`db.ts`）。
+> 依據：[設計討論紀錄](../design-discussion.md)（第 2～4、8～10 節）與 `poc/colyseus` 分支的結構（`Lobby.ts`、`GameRoom.ts`、`rules.ts`、`db.ts`）。
 > 流程圖中的函式是**虛擬碼**，用來說明誰呼叫誰。Colyseus 的 API 名稱（`matchMaker.createRoom`、`reserveSeatFor`、`consumeSeatReservation`、`allowReconnection`、`presence.publish` 等）以 0.18 版型別定義為準，實作時要再確認。
 
 ## 1. 架構圖

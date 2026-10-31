@@ -1,6 +1,6 @@
 # PoC 結果比較：Nakama、Colyseus、boardgame.io
 
-> 測試日期：2026-10-22。測試計畫見 `docs/poc-test-plan.md`。
+> 測試日期：2026-10-22。測試計畫見 [poc-test-plan.md](poc-test-plan.md)。
 > 各分支的程式碼、截圖與詳細說明在 `poc/nakama`、`poc/colyseus`、`poc/boardgameio` 分支的 `test-screenshot/README.md`。
 
 三個分支都完整通過同一套 E2E（19 項檢查，S0～S8）與資料庫驗證（14 項檢查，S9），三者平行執行時也全部通過。三個前端共用同一套 Vue 畫面，只有 `web/src/backend.ts` 依框架不同；E2E 腳本除了埠號外完全相同。
