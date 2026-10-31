@@ -1,0 +1,110 @@
+{
+  "bots": 100,
+  "chat_every": "2s",
+  "connect_all": "29ms",
+  "connect_latency": {
+    "count": "100",
+    "max": "22.22ms",
+    "p50": "8.72ms",
+    "p95": "17.9ms",
+    "p99": "21.85ms"
+  },
+  "dm_delivered_once": "138/138",
+  "dm_latency": {
+    "count": "138",
+    "max": "2.27ms",
+    "p50": "410µs",
+    "p95": "830µs",
+    "p99": "1.61ms"
+  },
+  "dm_sent": 138,
+  "duration": "30s",
+  "errors": 0,
+  "final_player_lists": "100/100 bots see all 100 players in the lobby",
+  "invites_accepted": 25,
+  "lobby_chat_latency": {
+    "count": "94570",
+    "max": "183.54ms",
+    "p50": "1.25ms",
+    "p95": "2.1ms",
+    "p99": "3.25ms"
+  },
+  "lobby_chat_sent": 1032,
+  "messages_received": 99584,
+  "pairs": 25,
+  "phase1_complete": "355/355",
+  "room_chat_latency": {
+    "count": "500",
+    "max": "2.15ms",
+    "p50": "360µs",
+    "p95": "590µs",
+    "p99": "1.21ms"
+  },
+  "room_chat_sent": 250,
+  "room_joins": 50,
+  "server_after_close": {
+    "connected": 0,
+    "goroutines": 4,
+    "heap_alloc_mb": 5.9758453369140625,
+    "lobby": {
+      "in_lobby": 0,
+      "in_rooms": 0,
+      "invites": 0,
+      "players": 0,
+      "rooms": 0
+    },
+    "messages_in": 1620,
+    "messages_out": 99584,
+    "rooms_opened": 25,
+    "slow_kicks": 0
+  },
+  "server_all_connected": {
+    "connected": 100,
+    "goroutines": 304,
+    "heap_alloc_mb": 3.3541793823242188,
+    "lobby": {
+      "in_lobby": 100,
+      "in_rooms": 0,
+      "invites": 0,
+      "players": 100,
+      "rooms": 0
+    },
+    "messages_in": 0,
+    "messages_out": 100,
+    "rooms_opened": 0,
+    "slow_kicks": 0
+  },
+  "server_before": {
+    "connected": 0,
+    "goroutines": 4,
+    "heap_alloc_mb": 0.321258544921875,
+    "lobby": {
+      "in_lobby": 0,
+      "in_rooms": 0,
+      "invites": 0,
+      "players": 0,
+      "rooms": 0
+    },
+    "messages_in": 0,
+    "messages_out": 0,
+    "rooms_opened": 0,
+    "slow_kicks": 0
+  },
+  "server_end": {
+    "connected": 100,
+    "goroutines": 304,
+    "heap_alloc_mb": 5.7249603271484375,
+    "lobby": {
+      "in_lobby": 100,
+      "in_rooms": 0,
+      "invites": 0,
+      "players": 100,
+      "rooms": 0
+    },
+    "messages_in": 1620,
+    "messages_out": 99584,
+    "rooms_opened": 25,
+    "slow_kicks": 0
+  },
+  "violations": null
+}
