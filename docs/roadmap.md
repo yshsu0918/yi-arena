@@ -2,6 +2,8 @@
 
 > 決定日期：2026-10-31。架構細節見 [architecture_v1.md](architecture_v1.md)。
 
+**目標**：做一個類似野狐的線上棋類平台，先做好圍棋，之後擴充五子棋等其他遊戲；大廳管理器自己掌握，新增遊戲時不必改動平台本身。
+
 ## 1. 決定
 
 | 項目 | 決定 |
@@ -9,7 +11,7 @@
 | 架構 | 大廳、房間、規則三分離，採「第 2 層分離」：同一個 repo、三個獨立程式，只透過 `proto/` 的介面溝通，互不 import 對方的程式碼 |
 | 大廳 | **自己寫的薄 Go 大廳**。第一個公開版本不需要好友、私訊，所以先不用 Nakama |
 | 房間 | Go，每個房間一個 goroutine |
-| 規則 | Node，`goban-engine`（OGS）加 OGS 估算器；無狀態 |
+| 規則 | Node，`goban-engine`（OGS 開源的圍棋規則庫）加 OGS 的死子估算器（終局時自動判斷死子）；無狀態 |
 | 服務之間 | gRPC（大廳 ↔ 房間雙向、房間 → 規則） |
 | 玩家連線 | WebSocket，大廳一條、房間一條，進房用入場券 |
 | 前端 | Vue，圍棋棋盤用 `goban`（OGS） |
@@ -19,14 +21,14 @@
 
 - **Colyseus**：對局搬到 Go 之後，它只剩連線管理與房間列表推送，也沒有好友功能，不值得多一種技術。
 - **boardgame.io**：自由度最低、限制最多，已停止維護。
-- **Nakama**：社群功能現成，但現在用不到。等第三個里程碑再評估（見第 4 節）。規格已寫好：`poc/nakama-lobby-go-room` 分支的 `docs/poc-nakama-lobby-go-room.md`。
+- **Nakama**：社群功能現成，但現在用不到。等里程碑 3 再評估（見第 3 節）。規格已寫好：[poc-nakama-lobby-go-room.md](https://github.com/yshsu0918/yi-arena/blob/poc/nakama-lobby-go-room/docs/poc-nakama-lobby-go-room.md)。
 - **NNGS、IGS、OGS 後端**：不能用或不適合直接用，NNGS 只當規格參考（見 [design-discussion.md](design-discussion.md) 5.7 節）。
 
 ## 2. 為什麼這樣排
 
 - **大廳選誰已經不急**：採第 2 層分離後，房間服務、規則服務與 proto 介面不論大廳用誰都一樣。之後要換成 Nakama，只影響大廳。
 - **不重複做三次大廳**：大廳只做一個最薄的版本，房間與規則一開始就做正式版。
-- **風險最高的先做**：自動判死子（估算器尚未實測）、規則服務的 gRPC、超時判定才是真正不確定的地方，大廳反而最確定（`poc/go-lobby` 已驗證）。
+- **風險最高的先做**：自動判死子（估算器尚未實測）、規則服務的 gRPC、超時判定才是真正不確定的地方，大廳反而最確定：[Go 大廳 PoC](https://github.com/yshsu0918/yi-arena/blob/poc/go-lobby/docs/poc-go-lobby.md) 已驗證 goroutine 大廳與房間模型，100 位模擬使用者全數通過（當時大廳與房間在同一個程序，拆成獨立服務與 gRPC 是本里程碑要做的）。
 - **最快能實際下一盤棋**：第一個里程碑完成就能完整下一盤圍棋。
 
 ## 3. 里程碑
@@ -72,7 +74,7 @@
 
 需要好友、私訊、帳號時才開始。
 
-1. 花**最多一週**依 `poc/nakama-lobby-go-room` 的規格做驗證，只看最大的風險：Nakama 的 Go 擴充引用 gRPC 套件時，能否和 Nakama 本身的版本相容；以及 Nakama 能否照同一份 proto 介面和房間服務溝通。
+1. 花**最多一週**依 [Nakama 驗證規格](https://github.com/yshsu0918/yi-arena/blob/poc/nakama-lobby-go-room/docs/poc-nakama-lobby-go-room.md) 做驗證，只看最大的風險：Nakama 的 Go 擴充引用 gRPC 套件時，能否和 Nakama 本身的版本相容；以及 Nakama 能否照同一份 proto 介面和房間服務溝通。
 2. 通過：換成 Nakama 大廳，房間服務與規則服務不用改。
 3. 不通過：在自己的 Go 大廳上補好友、私訊、登入。
 
@@ -92,5 +94,5 @@
 | [architecture_v1.md](architecture_v1.md) | **目前的架構**（以本路線圖的決定為準） |
 | [design-discussion.md](design-discussion.md) | 設計討論：邀局、悔棋、計時、NNGS 參考 |
 | [history/](history/README.md) | 已不採用或已完成的研究、草案、PoC 計畫與實驗，見該資料夾的說明 |
-| `poc/go-lobby` 分支的 `docs/poc-go-lobby.md` | Go 大廳 PoC 結果 |
-| `poc/nakama-lobby-go-room` 分支的 `docs/poc-nakama-lobby-go-room.md` | 里程碑 3 才會用到的 Nakama 驗證規格 |
+| [poc-go-lobby.md](https://github.com/yshsu0918/yi-arena/blob/poc/go-lobby/docs/poc-go-lobby.md)（`poc/go-lobby` 分支） | Go 大廳 PoC 結果 |
+| [poc-nakama-lobby-go-room.md](https://github.com/yshsu0918/yi-arena/blob/poc/nakama-lobby-go-room/docs/poc-nakama-lobby-go-room.md)（`poc/nakama-lobby-go-room` 分支） | 里程碑 3 才會用到的 Nakama 驗證規格 |

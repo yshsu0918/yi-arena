@@ -1,7 +1,7 @@
 # 架構 v1：大廳服務 + 房間服務 + 規則服務
 
-> 整理日期：2026-10-31（同日修訂：補上觀戰、開放房間、版本號、到場時限；終局改為自動判死子、雙方確認；統一用詞；修正超時判定；棋譜由房間記錄）。
-> 狀態：**草案，尚未實作，關鍵假設尚未完全驗證**（見第 10 節）。
+> 整理日期：2026-10-31。
+> 狀態：**設計階段，尚未實作；部分關鍵假設尚待驗證**（見第 10 節）。實作順序見 [roadmap.md](roadmap.md)。
 > 前一版草案：[history/architecture-colyseus.md](history/architecture-colyseus.md)（大廳與對局都在 Colyseus，已不採用）。兩者差異見第 12 節。
 > **2026-10-31 決定**：大廳改為自己寫的薄 Go 大廳（不用 Colyseus），三個服務依「第 2 層分離」獨立，服務之間用 gRPC。路線與理由見 [roadmap.md](roadmap.md)。
 > 本版涵蓋圍棋與五子棋（freestyle）；井字棋等其他遊戲之後再補。流程圖以圍棋為例，因為它多了終局確認階段，最複雜。
@@ -30,7 +30,7 @@
 
 不使用「引擎」一詞，只保留套件本名 `goban-engine`。
 
-## 1. 為什麼改架構
+## 1. 設計原則
 
 - **大廳和房間分開**：大廳只負責「找人、建房、列房間」；對局在房間服務裡跑。兩邊互不影響，玩家的焦點（在大廳或在房間）也自然分開。
 - **每個房間一個 goroutine**：房間自己擁有狀態，從自己的 channel 依序處理事件（玩家動作、計時器觸發、加入離開）。用 Go 寫最直覺，也能用到多核心。
@@ -181,7 +181,7 @@ repo
 
 資料歸屬：
 
-- 房間服務擁有棋譜的資料表。大廳服務不能直接讀寫，只能透過房間服務提供的查詢介面（例如 `GET /records/{id}`，或 gRPC 的 `GetRecord`）。
+- 房間服務擁有棋譜的資料表。大廳服務不能直接讀寫，只能透過房間服務提供的查詢介面（gRPC 的 `GetRecord`）。
 - 兩個服務可以共用同一台 PostgreSQL，但使用不同的資料庫（或 schema）與不同的資料庫帳號，互相不能存取對方的資料。
 - 寫紀錄失敗時，這個動作不算數、不廣播，並回錯誤給送出者，避免出現「大家都看到了、棋譜卻沒記到」的動作。
 
@@ -192,7 +192,7 @@ repo
 | `game` | 規則庫 | 階段 |
 | --- | --- | --- |
 | `go` | `goban-engine`（OGS） | 對局 → 確認死子（規則服務自動判斷）→（可恢復對局）→ 結束 |
-| `gomoku` | 五子棋模組（沿用 PoC 的 `rules.ts`，15 路、連五以上獲勝、無禁手） | 對局 → 結束 |
+| `gomoku` | 五子棋模組（沿用先前三框架 PoC 的 `rules.ts`，15 路、連五以上獲勝、無禁手） | 對局 → 結束 |
 
 ### 4.2 介面（無狀態 gRPC）
 
@@ -211,7 +211,7 @@ apply({ game, settings, actions: [...動作紀錄], action, viewer?: seat | "obs
 
 ### 4.3 圍棋終局
 
-- **自動判死子**：連續兩次 pass 後，規則服務先用估算器（`online-go/score-estimator`，MIT 授權，C++ 編成 WebAssembly 後直接在規則服務載入）算出每點歸屬，再交給 `goban-engine` 的 `autoscore` 判斷死子，最後用 `computeScore` 算分，回傳 `phase=scoring`。
+- **自動判死子**：連續兩次 pass 後，規則服務先用估算器（`online-go/score-estimator`，MIT 授權，C++ 編成 WebAssembly 後直接在規則服務載入；**尚待驗證**，見第 10 節）算出每點歸屬，再交給 `goban-engine` 的 `autoscore` 判斷死子，最後用 `computeScore` 算分，回傳 `phase=scoring`。
   - 不用 `goban-engine` 內建的簡易估算（Voronoi）：實測判斷不了死活（見第 10 節）。
   - 不經過 `goban-engine` 載入估算器的函式：它限定只能在瀏覽器執行，所以規則服務直接載入估算器的 WebAssembly 模組。
   - `goban-engine` 在雙方 pass 後不會自己切換階段，「連續兩次 pass」由規則服務從動作紀錄判斷。
@@ -498,7 +498,7 @@ sequenceDiagram
 | 服務數量 | 1 個 Node 程序 | 3 個獨立服務：大廳服務（Go）、房間服務（Go）、規則服務池（Node），服務之間用 gRPC |
 | 建房與座位 | `matchMaker.createRoom` + `reserveSeatFor` | 大廳以 gRPC 呼叫 `CreateRoom`、`ReserveSeat`；座位由房間分配 |
 | 玩家連線 | 一個 Colyseus client，先連大廳再進房 | 兩條 WebSocket：大廳、房間；入場券 + 重連憑證 |
-| 規則在哪裡跑 | 房間程序內直接呼叫 `goban-engine` | RPC 呼叫規則服務，每次帶完整動作紀錄 |
+| 規則在哪裡跑 | 房間程序內直接呼叫 `goban-engine` | 以 gRPC 呼叫規則服務，每次帶完整動作紀錄 |
 | 計時器 | Colyseus 的 `clock.setTimeout` | Go `time.Timer`，觸發時送事件進房間；依收到時間判超時 |
 | 房間列表 | GameRoom 的 metadata 自動推送 | 大廳依房間事件維護列表項並推送；所有對局公開可觀戰 |
 | 觀戰 | 未設計 | 觀戰入場券、講評只給觀戰者、每條連線獨立送出佇列 |
