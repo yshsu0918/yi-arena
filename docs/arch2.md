@@ -3,6 +3,7 @@
 > 整理日期：2026-10-31（同日修訂：補上觀戰、開放房間、版本號、到場時限；終局改為自動判死子、雙方確認；統一用詞；修正超時判定；棋譜由房間記錄）。
 > 狀態：**草案，尚未實作，關鍵假設尚未完全驗證**（見第 10 節）。
 > 前一版：[architecture.md](architecture.md)（大廳與對局都在 Colyseus）。兩者差異見第 12 節。
+> **2026-10-31 決定**：大廳改為自己寫的薄 Go 大廳（不用 Colyseus），三個服務依「第 2 層分離」獨立，服務之間用 gRPC。路線與理由見 [roadmap.md](roadmap.md)。
 > 本版涵蓋圍棋與五子棋（freestyle）；井字棋等其他遊戲之後再補。流程圖以圍棋為例，因為它多了終局確認階段，最複雜。
 > 圖中的函式、訊息名稱都是**虛擬碼**。
 
@@ -12,8 +13,8 @@
 
 | 名詞 | 是什麼 | 屬於 |
 | --- | --- | --- |
-| **大廳服務** | 玩家狀態、邀局、配對、房間列表、簽發入場券（Colyseus，Node.js） | — |
-| 列表項 | 大廳房間列表上的一筆資料（狀態、人數、觀戰人數），不跑對局 | 大廳服務 |
+| **大廳服務** | 玩家狀態、邀局、配對、房間列表、簽發入場券、對局摘要（Go，獨立服務；之後需要社群功能時可換成 Nakama，見路線圖） | — |
+| 列表項 | 大廳房間列表上的一筆資料（狀態、人數、觀戰人數），由大廳依房間事件維護，不跑對局 | 大廳服務 |
 | **房間服務** | 跑所有房間的程序（Go） | — |
 | 閘道 | 接 WebSocket、驗證入場券、蓋收到時間、把訊息送到對的房間、替每條連線送出訊息 | 房間服務 |
 | 房間管理器 | 建房、房間表、對帳、重啟後還原 | 房間服務 |
@@ -35,7 +36,8 @@
 - **每個房間一個 goroutine**：房間自己擁有狀態，從自己的 channel 依序處理事件（玩家動作、計時器觸發、加入離開）。用 Go 寫最直覺，也能用到多核心。
 - **計時器能主動觸發事件**：超時判負、讀秒、終局確認時限到、到場時限到，都是計時器送進房間的事件。
 - **前後端同一份規則**：前端用 `goban` 先檢查、先擺子；規則服務用同一版 `goban-engine` 當裁判。
-- **不重造輪子**：大廳用 Colyseus（連線、重連、房間列表推送），規則用 OGS 的 `goban-engine` 與估算器。
+- **困難的輪子用現成的，核心自己寫**：規則用 OGS 的 `goban-engine` 與估算器；大廳與房間是產品核心，自己寫，大廳保持很薄。
+- **三個服務各自獨立（第 2 層分離）**：同一個 repo、三個獨立程式，只透過 proto 介面溝通，互不 import 對方的程式碼。之後要把大廳換成 Nakama，房間服務與規則服務不用改（見 2.1 節）。
 
 ## 2. 元件
 
@@ -46,7 +48,7 @@ flowchart TB
     GameUI["對局／觀戰畫面<br/>圍棋：goban 棋盤<br/>五子棋：自製棋盤<br/>棋手先檢查、先擺子"]
   end
 
-  subgraph LobbySvc["大廳服務：Colyseus（Node.js）"]
+  subgraph LobbySvc["大廳服務：Go"]
     Lobby["大廳<br/>玩家狀態、邀局、自動配對"]
     Listing["列表項（每個房間一筆）<br/>狀態、人數、觀戰人數"]
     TicketIssuer["入場券簽發<br/>棋手、觀戰"]
@@ -63,14 +65,14 @@ flowchart TB
 
   LobbyUI <-- "WebSocket" --> Lobby
   GameUI <-- "WebSocket + 入場券" --> Gateway
-  Lobby -- "建房、要座位（內部 HTTP）" --> Manager
-  Manager -- "房間事件（帶序號）" --> Lobby
+  Lobby -- "gRPC：建房、要座位、對帳" --> Manager
+  Manager -- "gRPC：房間事件（帶序號）" --> Lobby
   Lobby --> Listing
   Lobby --> TicketIssuer
   Gateway --> Room
   Manager --> Room
   Room --> DB
-  Room -- "RPC：設定 + 動作紀錄 + 下一個動作" --> Rules
+  Room -- "gRPC：設定 + 動作紀錄 + 下一個動作" --> Rules
 ```
 
 | 服務 | 負責 | 不負責 |
@@ -79,6 +81,22 @@ flowchart TB
 | 房間服務 | 房間的生命週期、**座位的最終分配**、觀戰名單、計時與超時判定、提議（終局確認、之後的悔棋）、聊天與講評、**記錄棋譜**（3.5 節） | 規則本身、大廳列表 |
 | 規則服務 | 依遊戲類型分派到對應規則庫；從動作紀錄重放，回答合不合法、局面、階段、結果；判死子；把棋譜轉成 SGF 等格式 | 任何狀態 |
 | 前端 | 顯示；棋手在對局階段用同一份規則先檢查、先擺子 | 判定結果（以房間為準） |
+
+### 2.1 程式碼分離（第 2 層）
+
+```text
+repo
+ ├─ proto/   大廳 ↔ 房間、房間 ↔ 規則的介面定義：三個服務唯一的共同約定
+ ├─ lobby/   大廳服務（Go，獨立執行檔）
+ ├─ room/    房間服務（Go，獨立執行檔）
+ ├─ rules/   規則服務（Node，獨立程式）
+ └─ docs/    入場券格式、房間事件、名詞
+```
+
+- **互不 import**：`lobby/` 與 `room/` 不能 import 對方的程式碼，只能共用 `proto/` 產生的介面。入場券格式寫成規格，各自實作簽發與驗證；若抽成共用函式庫，裡面只能有入場券格式。
+- **房間服務不知道大廳是誰做的**：只認 proto 介面與入場券。所以自己寫的 Go 大廳與之後可能換上的 Nakama 大廳，對房間服務來說是同一個介面。
+- **用假大廳測房間服務**：房間服務的測試接一個依 proto 實作的假大廳；同一套約定也用來檢查真正的大廳。
+- **連線分開**：玩家連大廳一條、連房間一條。
 
 ## 3. 房間（房間服務內部）
 
@@ -176,7 +194,7 @@ flowchart TB
 | `go` | `goban-engine`（OGS） | 對局 → 確認死子（規則服務自動判斷）→（可恢復對局）→ 結束 |
 | `gomoku` | 五子棋模組（沿用 PoC 的 `rules.ts`，15 路、連五以上獲勝、無禁手） | 對局 → 結束 |
 
-### 4.2 介面（無狀態 RPC）
+### 4.2 介面（無狀態 gRPC）
 
 ```text
 apply({ game, settings, actions: [...動作紀錄], action, viewer?: seat | "observer" })
@@ -207,26 +225,21 @@ apply({ game, settings, actions: [...動作紀錄], action, viewer?: seat | "obs
 
 ## 5. 服務之間的協定（虛擬碼）
 
-### 5.1 大廳服務 → 房間服務（內部 HTTP，只接受大廳服務呼叫）
+### 5.1 大廳服務 → 房間服務（gRPC，只接受大廳服務呼叫）
 
-```text
-POST /rooms
-  { room_id, game: "go", settings: { board_size, rules: "chinese", komi, handicap, time_control, rated },
-    seats: [ { seat: 0, user_id, name, color: "black" }, { seat: 1, user_id, name, color: "white" } ],
-    visibility: { listed: true, spectate: true } }
-→ { room_id, ws_url: "wss://<網域>/game/<room_id>" }
-```
+| 方法 | 輸入 | 回傳 |
+| --- | --- | --- |
+| `CreateRoom` | `room_id`、`game`、`settings{board_size, rules: "chinese", komi, handicap, time_control, rated}`、`seats[{seat, user_id, name, color}]`、`visibility{listed, spectate}` | `room_id`、`ws_url`（例如 `wss://<網域>/game/<room_id>`） |
+| `ReserveSeat` | `room_id`、`user_id`、`name` | `seat`，或錯誤 `full`／`finished` |
+| `ListRooms` | — | 所有房間的 ID、成員、狀態、觀戰人數（對帳用） |
+| `GetRecord` | 棋譜 ID | 完整棋譜（3.5 節） |
+| `CloseRoom` | `room_id` | 強制關房（管理用） |
 
 - **邀局、自動配對**：建房時兩個座位都已指定。
 - **開放房間**：建房時只指定房主，另一個座位空著。
 - `visibility` 預設公開、可觀戰。不公開、不開放觀戰之後做成建房選項。
 
-```text
-POST /rooms/{room_id}/seats   { user_id, name }
-→ { seat } 或 { error: "full" | "finished" }
-```
-
-開放房間有人按「加入」時，大廳先向房間服務要座位，拿到才簽發入場券。
+開放房間有人按「加入」時，大廳先呼叫 `ReserveSeat` 要座位，拿到才簽發入場券。
 
 ### 5.2 房間服務 → 大廳服務：房間事件
 
@@ -241,8 +254,8 @@ POST /rooms/{room_id}/seats   { user_id, name }
 | `room.closed` | 房間結束 | 移除列表項，玩家改回空閒 |
 
 - **每個事件帶房間內的序號**：大廳只處理比已知序號新的事件，重複或過期的就忽略，所以遺失重送、亂序都不會出錯。
-- **傳送方式**：房間服務回呼大廳服務的內部 HTTP 端點，失敗就重試；或維持一條常駐連線。
-- **定期對帳**：大廳定期呼叫 `GET /rooms`，以房間服務為準修正列表項。
+- **傳送方式**：房間服務呼叫大廳服務的 gRPC 方法（例如 `ReportRoomEvent`），失敗就重試。
+- **定期對帳**：大廳定期呼叫 `ListRooms`，以房間服務為準修正列表項。
 
 ### 5.3 入場券與重連憑證
 
@@ -284,7 +297,7 @@ sequenceDiagram
   L->>L: 檢查 Bob 在線、空閒、沒有待回覆的邀請
   L-->>B: invite_received
   B->>L: invite_reply(accept)
-  L->>M: POST /rooms（兩個座位都指定，公開可觀戰）
+  L->>M: CreateRoom（兩個座位都指定，公開可觀戰）
   M->>R: 啟動 goroutine，設到場時限計時器
   M-->>L: room_id, ws_url
   L->>L: 建立列表項（進行中、不可加入、可觀戰）
@@ -324,13 +337,13 @@ sequenceDiagram
   participant R as 房間
 
   A->>L: create_open_room(settings)
-  L->>M: POST /rooms（只指定 Alice）
+  L->>M: CreateRoom（只指定 Alice）
   M->>R: 啟動 goroutine
   L->>L: 建立列表項（等待中 1/2，可加入、可觀戰）
   L-->>A: game_ready(ws_url, ticketA)
   A->>R: 連線 + hello(ticketA)
   C->>L: join(room_id)
-  L->>M: POST /rooms/{id}/seats（Carol）
+  L->>M: ReserveSeat（Carol）
   M->>R: ReserveSeat(Carol)
   alt 有空位
     R-->>M: seat=1
@@ -447,7 +460,7 @@ sequenceDiagram
 | 棋手斷線 | — | 保留座位；計分對局照常計時；用重連憑證回來 |
 | 最後一秒落子與超時同時發生 | 可能誤判超時 | 依收到時間判定，見 3.3 節 |
 | 房間服務重啟 | 進行中的局中斷 | 房間管理器 `Restore()` 從動作紀錄重建房間，**停機期間不扣時**，重建後先暫停，雙方都重連才繼續；大廳對帳 |
-| 大廳服務重啟 | 對局不受影響 | 大廳向房間服務 `GET /rooms` 重建列表項 |
+| 大廳服務重啟 | 對局不受影響 | 大廳呼叫房間服務的 `ListRooms` 重建列表項 |
 | 房間事件遺失或亂序 | 列表不正確 | 事件帶序號、可重送；定期對帳，以房間服務為準 |
 | 確認時限到，有人沒回應 | 終局卡住 | 視為同意判斷結果，依紀錄的死子集合定案 |
 | 規則服務掛掉或逾時 | 無法判定動作 | 暫停雙方計時、通知「伺服器忙碌」、換池裡另一個規則服務重試；**不判任何人超時** |
@@ -464,14 +477,13 @@ sequenceDiagram
    - 內建的簡易估算（Voronoi）**不可用**：實測一顆被白棋三面包圍的黑子仍被判成活棋，白地全部不算。
    - 估算器：`goban-engine` 的載入函式限定只能在瀏覽器執行，但估算器本身是獨立的 C++ 專案（MIT），可以編成 WebAssembly 在 Node 載入。**尚未實際編譯測試**（需要允許在環境中編譯、執行外部程式碼）。
    - 要用估算器附帶的分級測試局面（沒有死子、棋形、簡單、中等、困難、非常困難）量準確度。OGS 論壇有使用者回報它常認不出大塊或複雜的死棋；因為有雙方確認與恢復對局，判斷錯誤不會判錯勝負，只是要多下幾手。
-3. **列表項**：Colyseus 內建的房間列表推送只列出 Colyseus 自己的 room。打算為每個房間在 Colyseus 開一個不跑對局的 room 當作列表項，由房間事件更新資料（狀態、人數、觀戰人數）。要確認推送正確；不行就改成在大廳裡自己維護列表。
-4. **觀戰推送**：一個房間 100 位觀戰者時，每手推送的延遲與記憶體用量。
-5. **超時判定**：模擬「截止前 0.1 秒落子」與「規則服務回應很慢」，確認不會誤判超時，過期的計時器事件會被忽略。
+3. **觀戰推送**：一個房間 100 位觀戰者時，每手推送的延遲與記憶體用量。
+4. **超時判定**：模擬「截止前 0.1 秒落子」與「規則服務回應很慢」，確認不會誤判超時，過期的計時器事件會被忽略。
 
 ## 11. 待決事項
 
 - **能否手動修正死子**：第一版只能「確認」或「恢復對局」，不能手動標記；之後視自動判斷的準確度再決定要不要加。
-- **身分驗證**：大廳怎麼確認玩家是誰（訪客名稱或登入），以及 Colyseus 的 `onAuth` 怎麼接。
+- **身分驗證**：第一版用訪客名稱；之後接登入（或換成 Nakama 的帳號）。
 - **聊天保存**：棋手對話和觀戰講評都存進資料庫，講評在局結束後公開並寫進棋譜。保存期限待定。
 - **不公開、不開放觀戰**：做成建房選項的時機。
 - **延遲直播**：重要對局讓觀戰者晚幾手看到，降低場外報招的風險。第一版不做。
@@ -483,12 +495,12 @@ sequenceDiagram
 | 項目 | architecture.md（v1） | arch2.md（本版） |
 | --- | --- | --- |
 | 對局在哪裡跑 | Colyseus 的 GameRoom（Node） | 房間服務（Go），每個房間一個 goroutine |
-| 服務數量 | 1 個 Node 程序 | 3 個：大廳服務（Colyseus）、房間服務（Go）、規則服務池（Node） |
-| 建房與座位 | `matchMaker.createRoom` + `reserveSeatFor` | 大廳呼叫房間服務建房、要座位；座位由房間分配 |
+| 服務數量 | 1 個 Node 程序 | 3 個獨立服務：大廳服務（Go）、房間服務（Go）、規則服務池（Node），服務之間用 gRPC |
+| 建房與座位 | `matchMaker.createRoom` + `reserveSeatFor` | 大廳以 gRPC 呼叫 `CreateRoom`、`ReserveSeat`；座位由房間分配 |
 | 玩家連線 | 一個 Colyseus client，先連大廳再進房 | 兩條 WebSocket：大廳、房間；入場券 + 重連憑證 |
 | 規則在哪裡跑 | 房間程序內直接呼叫 `goban-engine` | RPC 呼叫規則服務，每次帶完整動作紀錄 |
 | 計時器 | Colyseus 的 `clock.setTimeout` | Go `time.Timer`，觸發時送事件進房間；依收到時間判超時 |
-| 房間列表 | GameRoom 的 metadata 自動推送 | 房間事件更新列表項，再推送；所有對局公開可觀戰 |
+| 房間列表 | GameRoom 的 metadata 自動推送 | 大廳依房間事件維護列表項並推送；所有對局公開可觀戰 |
 | 觀戰 | 未設計 | 觀戰入場券、講評只給觀戰者、每條連線獨立送出佇列 |
 | 狀態同步 | 同一程序，不需要 | 房間服務 → 大廳服務事件（帶序號）+ 定期對帳 |
 | 重啟影響 | 程序重啟，大廳和對局一起中斷 | 大廳服務、房間服務可分別重啟；停機期間不扣時 |
