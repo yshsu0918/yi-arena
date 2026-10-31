@@ -1,0 +1,2 @@
+nakama-1  | {"level":"error","ts":"2026-10-31T14:20:36.637Z","caller":"server/runtime_go.go:3963","msg":"Could not open Go module","path":"/nakama/data/modules/lobby.so","error":"plugin.Open(\"/nakama/data/modules/lobby\"): plugin was built with a different version of package golang.org/x/sys/unix"}
+nakama-1  | {"level":"fatal","ts":"2026-10-31T14:20:36.637Z","caller":"main.go:205","msg":"Failed initializing runtime modules","error":"plugin.Open(\"/nakama/data/modules/lobby\"): plugin was built with a different version of package golang.org/x/sys/unix"}

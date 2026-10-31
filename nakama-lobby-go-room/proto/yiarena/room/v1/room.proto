@@ -1,0 +1,89 @@
+syntax = "proto3";
+
+// Contract between the lobby service (Nakama Go plugin) and the room service.
+//
+// Lobby -> room: the RoomService below (CreateRoom, ListRooms, CloseRoom).
+// Room -> lobby: RoomEvent, sent through Nakama's own gRPC API
+// (nakama.api.Nakama/RpcFunc, id "room_event", authenticated with the HTTP
+// key). Nakama RPC payloads are strings, so the event travels as protojson.
+package yiarena.room.v1;
+
+option go_package = "github.com/yshsu0918/yi-arena/nakama-lobby-go-room/proto/roompb";
+
+service RoomService {
+  // Creates a room goroutine for the given members and starts its arrival
+  // timer. Fails with ALREADY_EXISTS if the room ID is taken.
+  rpc CreateRoom(CreateRoomRequest) returns (CreateRoomResponse);
+  // Snapshot of every live room, used by the lobby to reconcile.
+  rpc ListRooms(ListRoomsRequest) returns (ListRoomsResponse);
+  // Force-closes a room (admin). Members are disconnected.
+  rpc CloseRoom(CloseRoomRequest) returns (CloseRoomResponse);
+}
+
+message Member {
+  string user_id = 1;
+  string name = 2;
+}
+
+enum RoomStatus {
+  ROOM_STATUS_UNSPECIFIED = 0;
+  // Created, waiting for every member to connect.
+  ROOM_STATUS_WAITING = 1;
+  // Every member has connected at least once.
+  ROOM_STATUS_PLAYING = 2;
+}
+
+message RoomInfo {
+  string room_id = 1;
+  repeated Member members = 2;
+  RoomStatus status = 3;
+  // User IDs currently connected to the room.
+  repeated string connected = 4;
+  // Sequence number of the last event the room emitted.
+  uint64 seq = 5;
+}
+
+message CreateRoomRequest {
+  string room_id = 1;
+  repeated Member members = 2;
+}
+
+message CreateRoomResponse {
+  string room_id = 1;
+  string ws_url = 2;
+}
+
+message ListRoomsRequest {}
+
+message ListRoomsResponse {
+  repeated RoomInfo rooms = 1;
+  // Changes every time the room service process starts.
+  string instance_id = 2;
+}
+
+message CloseRoomRequest {
+  string room_id = 1;
+}
+
+message CloseRoomResponse {
+  bool closed = 1;
+}
+
+// Event types: "room.started", "room.player_disconnected",
+// "room.player_reconnected", "room.closed", "room.cancelled".
+message RoomEvent {
+  string type = 1;
+  string room_id = 2;
+  // Increases by one for every event of the same room. The lobby ignores
+  // events whose seq is not greater than the last one it applied.
+  uint64 seq = 3;
+  // The member the event is about, for (dis|re)connect events.
+  string user_id = 4;
+  // Room state right after the event, so a later event always supersedes an
+  // earlier one.
+  RoomInfo room = 5;
+  // Unix milliseconds when the room emitted the event (for latency stats).
+  int64 sent_at_ms = 6;
+  // Free text: why a room was closed or cancelled.
+  string reason = 7;
+}

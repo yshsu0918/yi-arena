@@ -1,0 +1,172 @@
+{
+  "scenario": "C",
+  "title": "邀局的例外",
+  "started_at": "2026-10-31T22:47:59.474970066+08:00",
+  "duration_sec": 90.56796509,
+  "passed": true,
+  "checks": [
+    {
+      "step": "C0",
+      "name": "Alice 登入",
+      "ok": true
+    },
+    {
+      "step": "C0",
+      "name": "Bob 登入",
+      "ok": true
+    },
+    {
+      "step": "C0",
+      "name": "Carol 登入",
+      "ok": true
+    },
+    {
+      "step": "C0",
+      "name": "Dave 登入",
+      "ok": true
+    },
+    {
+      "step": "C0",
+      "name": "Erin 登入",
+      "ok": true
+    },
+    {
+      "step": "C1",
+      "name": "Alice 邀請 Bob",
+      "ok": true
+    },
+    {
+      "step": "C1",
+      "name": "Bob 拒絕",
+      "ok": true,
+      "detail": "\u003cnil\u003e"
+    },
+    {
+      "step": "C1",
+      "name": "Alice 收到拒絕通知",
+      "ok": true
+    },
+    {
+      "step": "C1",
+      "name": "雙方回到可邀請狀態（可以再邀一次）",
+      "ok": true
+    },
+    {
+      "step": "C3",
+      "name": "Alice 邀請 Bob（待回覆）",
+      "ok": true
+    },
+    {
+      "step": "C3",
+      "name": "Carol 邀請 Alice 被拒絕",
+      "ok": true,
+      "detail": "錯誤 \"pending_invite\""
+    },
+    {
+      "step": "C3",
+      "name": "（加測）Alice 有待回覆邀請時也不能再邀別人",
+      "ok": true,
+      "detail": "錯誤 \"pending_invite\""
+    },
+    {
+      "step": "C4",
+      "name": "Dave、Erin 進入對局",
+      "ok": true
+    },
+    {
+      "step": "C4",
+      "name": "Alice 邀請對局中的 Dave 被拒絕",
+      "ok": true,
+      "detail": "錯誤 \"busy\""
+    },
+    {
+      "step": "C4",
+      "name": "（加測）對局中的 Dave 不能邀請別人",
+      "ok": true,
+      "detail": "錯誤 \"busy\""
+    },
+    {
+      "step": "C5",
+      "name": "Bob 離線時邀請他被拒絕（只能邀請線上玩家）",
+      "ok": true,
+      "detail": "錯誤 \"offline\""
+    },
+    {
+      "step": "C5",
+      "name": "Bob 離線時 Alice 寄一則持久化通知給他",
+      "ok": true
+    },
+    {
+      "step": "C5",
+      "name": "Bob 重新登入",
+      "ok": true
+    },
+    {
+      "step": "C5",
+      "name": "Bob 登入後在通知列表看到這則通知",
+      "ok": true,
+      "detail": "1 notifications"
+    },
+    {
+      "step": "C2",
+      "name": "Alice 邀請 Bob，Bob 不回覆",
+      "ok": true
+    },
+    {
+      "step": "C2",
+      "name": "60 秒後邀請逾時，雙方收到通知",
+      "ok": true,
+      "detail": "60.0 秒"
+    },
+    {
+      "step": "C2",
+      "name": "逾時後雙方可以再被邀請",
+      "ok": true
+    },
+    {
+      "step": "C6",
+      "name": "Alice 邀請、Bob 接受",
+      "ok": true
+    },
+    {
+      "step": "C6",
+      "name": "Alice 收到入場券",
+      "ok": true
+    },
+    {
+      "step": "C6",
+      "name": "只有 Alice 連進房間，Bob 不連",
+      "ok": true,
+      "detail": "{Type:welcome Code: Reason: From: UserID: Text: ID: SentAt:0 Status:waiting At:2026-10-31 22:49:00.038864731 +0800 CST m=+60.564992652} \u003cnil\u003e"
+    },
+    {
+      "step": "C6",
+      "name": "30 秒後房間取消，雙方收到 room_cancelled 通知",
+      "ok": true,
+      "detail": "30.0 秒"
+    },
+    {
+      "step": "C6",
+      "name": "Alice 的房間連線收到 room_closed（arrival_timeout）",
+      "ok": true,
+      "detail": "{Type:room_closed Code: Reason:arrival_timeout From: UserID: Text: ID: SentAt:0 Status: At:2026-10-31 22:49:30.03996923 +0800 CST m=+90.566097161}"
+    },
+    {
+      "step": "C6",
+      "name": "房間從列表移除（Carol 即時收到）",
+      "ok": true,
+      "detail": "\u003cnil\u003e"
+    },
+    {
+      "step": "C6",
+      "name": "大廳沒有殘留的房間、邀請、對局中玩家",
+      "ok": true,
+      "detail": "rooms=0 invites=0 busy=0"
+    },
+    {
+      "step": "C6",
+      "name": "雙方回到空閒，可以再被邀請",
+      "ok": true
+    }
+  ]
+}

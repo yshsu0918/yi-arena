@@ -1,0 +1,190 @@
+{
+  "scenario": "D",
+  "title": "故障與對帳",
+  "started_at": "2026-10-31T22:49:36.872758792+08:00",
+  "duration_sec": 9.005455768,
+  "passed": true,
+  "checks": [
+    {
+      "step": "D0",
+      "name": "Alice 登入",
+      "ok": true
+    },
+    {
+      "step": "D0",
+      "name": "Bob 登入",
+      "ok": true
+    },
+    {
+      "step": "D0",
+      "name": "Carol 登入",
+      "ok": true
+    },
+    {
+      "step": "D0",
+      "name": "Carol 追蹤 Alice、Bob 的狀態",
+      "ok": true
+    },
+    {
+      "step": "D1",
+      "name": "Alice、Bob 進入對局",
+      "ok": true
+    },
+    {
+      "step": "D1",
+      "name": "重啟房間服務（docker compose restart room）",
+      "ok": true
+    },
+    {
+      "step": "D1",
+      "name": "大廳發現房間消失，從列表移除（Carol 收到推送）",
+      "ok": true,
+      "detail": "重啟開始後 911 ms"
+    },
+    {
+      "step": "D1",
+      "name": "Alice、Bob 狀態回到「空閒」",
+      "ok": true,
+      "detail": "alice=\u003cnil\u003e bob=\u003cnil\u003e"
+    },
+    {
+      "step": "D1",
+      "name": "沒有幽靈房間",
+      "ok": true
+    },
+    {
+      "step": "D1",
+      "name": "房間服務確實是新的程序",
+      "ok": true,
+      "detail": "8de91d3c6de8 -\u003e 5925897a4142"
+    },
+    {
+      "step": "D1",
+      "name": "玩家的房間連線被斷開",
+      "ok": true
+    },
+    {
+      "step": "D2",
+      "name": "Alice、Bob 再開一局",
+      "ok": true
+    },
+    {
+      "step": "D2",
+      "name": "重啟 Nakama（docker compose restart nakama）",
+      "ok": true
+    },
+    {
+      "step": "D2",
+      "name": "Nakama 重啟期間房內聊天照常",
+      "ok": true,
+      "detail": "\u003cnil\u003e"
+    },
+    {
+      "step": "D2",
+      "name": "房間連線沒有中斷",
+      "ok": true
+    },
+    {
+      "step": "D2",
+      "name": "Nakama 重新啟動完成",
+      "ok": true
+    },
+    {
+      "step": "D2",
+      "name": "Alice 重新連上 Nakama（session token 沿用）",
+      "ok": true
+    },
+    {
+      "step": "D2",
+      "name": "Bob 重新連上 Nakama（session token 沿用）",
+      "ok": true
+    },
+    {
+      "step": "D2",
+      "name": "Carol 重新連上 Nakama（session token 沿用）",
+      "ok": true
+    },
+    {
+      "step": "D2",
+      "name": "Carol 重新追蹤狀態",
+      "ok": true
+    },
+    {
+      "step": "D2",
+      "name": "大廳透過 ListRooms 重建房間列表",
+      "ok": true,
+      "detail": "Nakama 健康後 1 ms：[{RoomID:9933a4f53348a8bed742f8aceb982e89 Status:playing Connected:[72dfb711-22c4-4e02-8d4c-d806c0850724 b9e84937-f622-4ece-a431-6647bc1ef4ca]}]"
+    },
+    {
+      "step": "D2",
+      "name": "重建來源是對帳（reconcile_added ≥ 1）",
+      "ok": true,
+      "detail": "reconcile_added=1"
+    },
+    {
+      "step": "D2",
+      "name": "Alice、Bob 的狀態恢復為「對局中」",
+      "ok": true,
+      "detail": "2/2"
+    },
+    {
+      "step": "D3",
+      "name": "暫停 Nakama（docker compose pause nakama）",
+      "ok": true
+    },
+    {
+      "step": "D3",
+      "name": "雙方離開，房間服務關房，room.closed 送不出去而排隊",
+      "ok": true
+    },
+    {
+      "step": "D3",
+      "name": "送出失敗會重試",
+      "ok": true,
+      "detail": "retries 0 -\u003e 1"
+    },
+    {
+      "step": "D3",
+      "name": "恢復 Nakama（docker compose unpause nakama）",
+      "ok": true
+    },
+    {
+      "step": "D3",
+      "name": "恢復後事件重送成功",
+      "ok": true,
+      "detail": "恢復後 0 ms"
+    },
+    {
+      "step": "D3",
+      "name": "大廳移除房間，雙方回到空閒",
+      "ok": true,
+      "detail": "恢復後 74 ms"
+    },
+    {
+      "step": "D3",
+      "name": "room.closed 只被處理一次",
+      "ok": true,
+      "detail": "events_applied +1, ignored +0"
+    },
+    {
+      "step": "D3",
+      "name": "重複送一個舊事件（seq=1）被忽略",
+      "ok": true,
+      "detail": "applied=false err=\u003cnil\u003e"
+    },
+    {
+      "step": "D3",
+      "name": "房間沒有因為舊事件重新出現",
+      "ok": true
+    },
+    {
+      "step": "D3",
+      "name": "（加測）一般使用者不能呼叫 room_event",
+      "ok": true,
+      "detail": "錯誤 \"server_only\""
+    }
+  ],
+  "metrics": {
+    "nakama_restart_s": 0.913566173
+  }
+}

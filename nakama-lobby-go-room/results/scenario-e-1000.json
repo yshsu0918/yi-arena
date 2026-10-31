@@ -1,0 +1,143 @@
+{
+  "scenario": "E",
+  "title": "1000 人負載",
+  "started_at": "2026-10-31T22:40:25.985481317+08:00",
+  "duration_sec": 38.66135649,
+  "passed": false,
+  "checks": [
+    {
+      "step": "E1",
+      "name": "1000 位使用者登入",
+      "ok": true,
+      "detail": "成功 1000，總時間 401 ms；\u003cnil\u003e"
+    },
+    {
+      "step": "E1",
+      "name": "建立好友關係（雙方確認）",
+      "ok": false,
+      "detail": "2507 對，2754 ms；nakama 500: Error while trying to add friends. (code 13)"
+    },
+    {
+      "step": "E1",
+      "name": "每個人的好友數都是 3 個以上且與預期一致",
+      "ok": false,
+      "detail": "996/1000"
+    },
+    {
+      "step": "E1",
+      "name": "每個人追蹤好友狀態",
+      "ok": true,
+      "detail": "\u003cnil\u003e"
+    },
+    {
+      "step": "E1",
+      "name": "好友之間加入私訊頻道",
+      "ok": true,
+      "detail": "\u003cnil\u003e"
+    },
+    {
+      "step": "E4",
+      "name": "每則私訊剛好送達一次",
+      "ok": true,
+      "detail": "送出 2563、剛好一次 2563、遺失 0、重複 0、送錯 0、送出失敗 0"
+    },
+    {
+      "step": "E4",
+      "name": "所有邀局都成功開房、聊天、關房",
+      "ok": true,
+      "detail": "250/250 "
+    },
+    {
+      "step": "E4",
+      "name": "大廳沒有殘留的房間、邀請、對局中玩家",
+      "ok": true,
+      "detail": "rooms=0 invites=0 busy=0"
+    },
+    {
+      "step": "E4",
+      "name": "房間服務沒有殘留的房間、連線、待送事件",
+      "ok": true,
+      "detail": "rooms=0 conns=0 pending=0 goroutines=20 slow_kicks=0"
+    },
+    {
+      "step": "E4",
+      "name": "好友看到的最後狀態都不是「對局中」",
+      "ok": true,
+      "detail": "0 個好友看到的狀態不是 idle"
+    }
+  ],
+  "metrics": {
+    "accept_to_connected_ms": {
+      "max": 17.193,
+      "n": 250,
+      "p50": 4.911,
+      "p95": 5.897,
+      "p99": 9.255
+    },
+    "dm_latency_ms": {
+      "max": 25.224,
+      "n": 2563,
+      "p50": 1.162,
+      "p95": 3.715,
+      "p99": 8.783
+    },
+    "dm_sent": 2563,
+    "login_ms": {
+      "max": 87.224,
+      "n": 1000,
+      "p50": 4.35,
+      "p95": 20.009,
+      "p99": 85.405
+    },
+    "login_wall_ms": 401,
+    "resources": {
+      "db": {
+        "cpu_pct_avg": 2.1799999999999997,
+        "cpu_pct_max": 11.44,
+        "mem_mb_max": 90.09,
+        "samples": 17
+      },
+      "nakama": {
+        "cpu_pct_avg": 39.198235294117644,
+        "cpu_pct_max": 127.06,
+        "mem_mb_max": 195,
+        "samples": 17
+      },
+      "room": {
+        "cpu_pct_avg": 2.539411764705882,
+        "cpu_pct_max": 9.18,
+        "mem_mb_max": 17.31,
+        "samples": 17
+      },
+      "room_service_goroutines_max": 286,
+      "room_service_heap_mb_max": 6.612846374511719
+    },
+    "room_chat_latency_ms": {
+      "max": 6.849,
+      "n": 5000,
+      "p50": 0.197,
+      "p95": 2.342,
+      "p99": 3.505
+    },
+    "room_event_latency_ms": {
+      "max": 1.505,
+      "n": 500,
+      "p50": 0.666,
+      "p95": 1.142,
+      "p99": 1.249
+    },
+    "room_service_final": {
+      "instance_id": "8f90e92154db",
+      "goroutines": 20,
+      "heap_alloc_mb": 6.616065979003906,
+      "sys_mb": 27.45142364501953,
+      "rooms": 0,
+      "connections": 0,
+      "slow_kicks": 0,
+      "events_sent": 500,
+      "events_retries": 0,
+      "events_pending": 0
+    },
+    "window_s": 29.998592566
+  }
+}

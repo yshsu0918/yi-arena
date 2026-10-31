@@ -1,0 +1,226 @@
+{
+  "scenario": "B",
+  "title": "邀局到房間結束",
+  "started_at": "2026-10-31T22:55:16.936198336+08:00",
+  "duration_sec": 61.558438433,
+  "passed": true,
+  "checks": [
+    {
+      "step": "B0",
+      "name": "Alice 登入",
+      "ok": true
+    },
+    {
+      "step": "B0",
+      "name": "Bob 登入",
+      "ok": true
+    },
+    {
+      "step": "B0",
+      "name": "Carol 登入",
+      "ok": true
+    },
+    {
+      "step": "B0",
+      "name": "Dave 登入",
+      "ok": true
+    },
+    {
+      "step": "B0",
+      "name": "Erin 登入",
+      "ok": true
+    },
+    {
+      "step": "B0",
+      "name": "Carol 追蹤 Alice、Bob 的狀態",
+      "ok": true
+    },
+    {
+      "step": "B0",
+      "name": "一開始房間列表是空的",
+      "ok": true,
+      "detail": "0 rooms, err=\u003cnil\u003e"
+    },
+    {
+      "step": "B1",
+      "name": "Alice 邀請 Bob",
+      "ok": true
+    },
+    {
+      "step": "B1",
+      "name": "Bob 收到邀請通知",
+      "ok": true,
+      "detail": "{InviteID:99d9441bc3f22ea3ebcff32cf79a5451 From:{Name:Alice}} err=\u003cnil\u003e"
+    },
+    {
+      "step": "B2",
+      "name": "Bob 接受邀請",
+      "ok": true
+    },
+    {
+      "step": "B2",
+      "name": "雙方都收到「房間位址 + 入場券」通知",
+      "ok": true,
+      "detail": "room=70ffdd0f19d9337850decc990b94c417 ws=ws://localhost:8923/rooms/70ffdd0f19d9337850decc990b94c417"
+    },
+    {
+      "step": "B2",
+      "name": "Bob 另外換一張入場券（留給 B5 測過期）",
+      "ok": true
+    },
+    {
+      "step": "B3",
+      "name": "Alice 用入場券連上房間",
+      "ok": true,
+      "detail": "{Type:welcome Code: Reason: From: UserID: Text: ID: SentAt:0 Status:waiting At:2026-10-31 22:55:16.991132999 +0800 CST m=+0.056372529} \u003cnil\u003e"
+    },
+    {
+      "step": "B3",
+      "name": "Bob 用入場券連上房間",
+      "ok": true,
+      "detail": "{Type:welcome Code: Reason: From: UserID: Text: ID: SentAt:0 Status:playing At:2026-10-31 22:55:16.991813754 +0800 CST m=+0.057053284} \u003cnil\u003e"
+    },
+    {
+      "step": "B3",
+      "name": "Carol 在大廳即時收到房間「進行中」的推送",
+      "ok": true,
+      "detail": "\u003cnil\u003e"
+    },
+    {
+      "step": "B3",
+      "name": "Alice、Bob 的狀態變成「對局中」（Carol 看到）",
+      "ok": true,
+      "detail": "alice=\u003cnil\u003e bob=\u003cnil\u003e"
+    },
+    {
+      "step": "B3",
+      "name": "list_rooms 有這個房間，狀態為 playing",
+      "ok": true,
+      "detail": "[{RoomID:70ffdd0f19d9337850decc990b94c417 Status:playing Connected:[9639a105-f798-4486-836f-3c9345860a62 cd1d4883-0f10-4c88-99f8-b1ce390bae46]}]"
+    },
+    {
+      "step": "B4",
+      "name": "Bob 收到 Alice 的房內聊天",
+      "ok": true,
+      "detail": "\u003cnil\u003e"
+    },
+    {
+      "step": "B4",
+      "name": "Alice 收到 Bob 的房內聊天",
+      "ok": true,
+      "detail": "\u003cnil\u003e"
+    },
+    {
+      "step": "B4",
+      "name": "（加測）Bob 的房間連線斷了，Alice 收到 member_disconnected",
+      "ok": true,
+      "detail": "\u003cnil\u003e"
+    },
+    {
+      "step": "B4",
+      "name": "（加測）大廳收到 room.player_disconnected，列表顯示 1 人連線",
+      "ok": true,
+      "detail": "\u003cnil\u003e"
+    },
+    {
+      "step": "B4",
+      "name": "（加測）Bob 回大廳用 reissue_ticket 換新的入場券",
+      "ok": true
+    },
+    {
+      "step": "B4",
+      "name": "（加測）Bob 用新入場券回到房間",
+      "ok": true,
+      "detail": "{Type:welcome Code: Reason: From: UserID: Text: ID: SentAt:0 Status:playing At:2026-10-31 22:55:16.995611345 +0800 CST m=+0.060850875} \u003cnil\u003e"
+    },
+    {
+      "step": "B4",
+      "name": "（加測）大廳收到 room.player_reconnected，列表顯示 2 人連線",
+      "ok": true,
+      "detail": "\u003cnil\u003e"
+    },
+    {
+      "step": "B4",
+      "name": "（加測）重連後聊天正常",
+      "ok": true,
+      "detail": "\u003cnil\u003e"
+    },
+    {
+      "step": "B5",
+      "name": "Carol 沒有入場券：被拒絕並斷線",
+      "ok": true,
+      "detail": "回覆 error/no_ticket err=\u003cnil\u003e"
+    },
+    {
+      "step": "B5",
+      "name": "Carol 拿 Alice 用過的入場券：被拒絕並斷線",
+      "ok": true,
+      "detail": "回覆 error/ticket_used err=\u003cnil\u003e"
+    },
+    {
+      "step": "B5",
+      "name": "Dave、Erin 開另一個房間",
+      "ok": true
+    },
+    {
+      "step": "B5",
+      "name": "取得 Dave 那個房間的入場券",
+      "ok": true
+    },
+    {
+      "step": "B5",
+      "name": "Carol 拿別的房間的入場券：被拒絕並斷線",
+      "ok": true,
+      "detail": "回覆 error/wrong_room err=\u003cnil\u003e"
+    },
+    {
+      "step": "B5",
+      "name": "等 Bob 的備用入場券過期",
+      "ok": true,
+      "detail": "等待 61 秒"
+    },
+    {
+      "step": "B5",
+      "name": "Carol 拿過期的入場券：被拒絕並斷線",
+      "ok": true,
+      "detail": "回覆 error/ticket_expired err=\u003cnil\u003e"
+    },
+    {
+      "step": "B5",
+      "name": "被拒絕的連線不影響房內",
+      "ok": true,
+      "detail": "\u003cnil\u003e"
+    },
+    {
+      "step": "B6",
+      "name": "房間從列表移除（Carol 即時收到）",
+      "ok": true,
+      "detail": "1 ms \u003cnil\u003e"
+    },
+    {
+      "step": "B6",
+      "name": "Alice、Bob 狀態回到「空閒」（Carol 看到）",
+      "ok": true,
+      "detail": "alice=\u003cnil\u003e bob=\u003cnil\u003e"
+    },
+    {
+      "step": "B6",
+      "name": "最後房間列表是空的",
+      "ok": true
+    },
+    {
+      "step": "B6",
+      "name": "大廳沒有殘留的房間、邀請、對局中玩家",
+      "ok": true,
+      "detail": "rooms=0 invites=0 busy=0"
+    },
+    {
+      "step": "B6",
+      "name": "房間服務裡也沒有房間",
+      "ok": true
+    }
+  ],
+  "metrics": {
+    "accept_to_both_connected_ms": 3
+  }
+}

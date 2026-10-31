@@ -1,0 +1,81 @@
+# Nakama lobby + Go room service PoC.
+#   scripts/up.sh     build everything and start  (docker compose -p poc-nakama-lobby-go-room up)
+#   scripts/reset.sh  wipe the database and start again
+#
+# Secrets come from the environment. The defaults below are for local testing
+# only and must not be used anywhere else.
+name: poc-nakama-lobby-go-room
+
+x-secrets: &secrets
+  TICKET_SECRET: ${TICKET_SECRET:-local-only-ticket-secret}
+  NAKAMA_HTTP_KEY: ${NAKAMA_HTTP_KEY:-local-only-http-key}
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-local-only-db-password}
+      POSTGRES_DB: nakama
+    ports:
+      - "5444:5432"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-d", "nakama"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  nakama:
+    image: heroiclabs/nakama:3.41.0
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      <<: *secrets
+      DB_ADDR: postgres:${DB_PASSWORD:-local-only-db-password}@db:5432/nakama
+      NAKAMA_SERVER_KEY: ${NAKAMA_SERVER_KEY:-local-only-server-key}
+      CONSOLE_PASSWORD: ${CONSOLE_PASSWORD:-local-only-console}
+    # Secrets reach the plugin through --runtime.env (read in InitModule).
+    entrypoint:
+      - /bin/sh
+      - -ec
+      - >
+        /nakama/nakama migrate up --database.address "$$DB_ADDR" &&
+        exec /nakama/nakama --name nakama1
+        --database.address "$$DB_ADDR"
+        --logger.level INFO
+        --session.token_expiry_sec 7200
+        --socket.server_key "$$NAKAMA_SERVER_KEY"
+        --runtime.http_key "$$NAKAMA_HTTP_KEY"
+        --console.password "$$CONSOLE_PASSWORD"
+        --runtime.env "TICKET_SECRET=$$TICKET_SECRET"
+        --runtime.env "ROOM_GRPC_ADDR=passthrough:///room:8924"
+        --runtime.env "INVITE_TIMEOUT_SEC=${INVITE_TIMEOUT_SEC:-60}"
+        --runtime.env "RECONCILE_INTERVAL_SEC=${RECONCILE_INTERVAL_SEC:-3}"
+    volumes:
+      - ./lobby-plugin/build/lobby.so:/nakama/data/modules/lobby.so:ro
+    ports:
+      - "8920:7350" # client API (HTTP + realtime socket)
+      - "8921:7351" # admin console (admin / CONSOLE_PASSWORD)
+      - "8922:7349" # gRPC API (server to server)
+    healthcheck:
+      test: ["CMD", "/nakama/nakama", "healthcheck"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  room:
+    build:
+      context: .
+      dockerfile: room-service/Dockerfile
+    environment:
+      <<: *secrets
+      NAKAMA_GRPC_ADDR: passthrough:///nakama:7349
+      PUBLIC_WS_BASE: ws://localhost:8923
+      WS_ADDR: ":8923"
+      GRPC_ADDR: ":8924"
+      ARRIVAL_TIMEOUT: ${ARRIVAL_TIMEOUT:-30s}
+      DISCONNECT_GRACE: ${DISCONNECT_GRACE:-60s}
+    ports:
+      - "8923:8923" # WebSocket for clients (+ /stats)
+      - "8924:8924" # gRPC, for the lobby only

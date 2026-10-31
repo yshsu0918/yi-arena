@@ -1,0 +1,124 @@
+{
+  "scenario": "A",
+  "title": "好友、私訊",
+  "started_at": "2026-10-31T22:54:44.86382062+08:00",
+  "duration_sec": 25.541810131,
+  "passed": true,
+  "checks": [
+    {
+      "step": "A1",
+      "name": "Alice 登入並連上即時連線",
+      "ok": true
+    },
+    {
+      "step": "A1",
+      "name": "Bob 登入並連上即時連線",
+      "ok": true
+    },
+    {
+      "step": "A1",
+      "name": "Carol 登入並連上即時連線",
+      "ok": true
+    },
+    {
+      "step": "A2",
+      "name": "Alice 送出好友邀請給 Bob",
+      "ok": true
+    },
+    {
+      "step": "A2",
+      "name": "Bob 收到好友邀請通知（Nakama 內建，code -2）",
+      "ok": true
+    },
+    {
+      "step": "A2",
+      "name": "Bob 看到 Alice 的好友邀請（state=2）",
+      "ok": true,
+      "detail": "state=2"
+    },
+    {
+      "step": "A2",
+      "name": "Bob 接受（反向加好友）",
+      "ok": true
+    },
+    {
+      "step": "A2",
+      "name": "Alice、Bob 互為好友（state=0）",
+      "ok": true,
+      "detail": "alice→bob=0 bob→alice=0"
+    },
+    {
+      "step": "A2",
+      "name": "Carol 沒有任何好友",
+      "ok": true,
+      "detail": "0 friends"
+    },
+    {
+      "step": "A3",
+      "name": "Alice 追蹤 Bob，看到 Bob 在線",
+      "ok": true,
+      "detail": "presences=1 err=\u003cnil\u003e"
+    },
+    {
+      "step": "A3",
+      "name": "Bob 的狀態是「空閒」（idle，由大廳在連線時設定）",
+      "ok": true
+    },
+    {
+      "step": "A4",
+      "name": "Alice 加入與 Bob 的私訊頻道",
+      "ok": true
+    },
+    {
+      "step": "A4",
+      "name": "Bob 收到私訊邀請通知（Nakama 內建，code -1）",
+      "ok": true
+    },
+    {
+      "step": "A4",
+      "name": "Bob 加入同一個私訊頻道",
+      "ok": true,
+      "detail": "alice=4.95300d9b-a446-44df-8b38-cdde3622cd19.b6336421-7730-4d9e-941e-229dd750ae86. bob=4.95300d9b-a446-44df-8b38-cdde3622cd19.b6336421-7730-4d9e-941e-229dd750ae86."
+    },
+    {
+      "step": "A4",
+      "name": "Alice 送出私訊",
+      "ok": true
+    },
+    {
+      "step": "A4",
+      "name": "Bob 收到私訊",
+      "ok": true,
+      "detail": "延遲 3 ms"
+    },
+    {
+      "step": "A4",
+      "name": "Carol 沒收到任何私訊",
+      "ok": true,
+      "detail": "0 messages"
+    },
+    {
+      "step": "A5",
+      "name": "Bob 登出，Alice 看到 Bob 離線",
+      "ok": true,
+      "detail": "0 ms"
+    },
+    {
+      "step": "A5",
+      "name": "Bob 再登入，Alice 看到 Bob 上線",
+      "ok": true,
+      "detail": "1 ms"
+    },
+    {
+      "step": "A6",
+      "name": "（加測）Bob 的連線卡住不回應，Alice 最後看到 Bob 離線",
+      "ok": true,
+      "detail": "25001 ms（Nakama 預設 ping 15 秒、pong 等待 25 秒）"
+    }
+  ],
+  "metrics": {
+    "status_offline_after_hang_ms": 25000,
+    "status_offline_after_logout_ms": 0,
+    "status_online_after_login_ms": 0
+  }
+}
