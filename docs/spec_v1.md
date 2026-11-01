@@ -3,7 +3,7 @@
 > 整理日期：2026-11-01。狀態：**設計階段，尚未實作**。
 > 本文件是全部功能的規格；**M1 的實作規格見 [spec_v2.md](spec_v2.md)**。
 > 本文件只寫系統「怎麼運作」。每個功能的階段見 [feature-list.md](feature-list.md)，實作順序見 [roadmap.md](roadmap.md)，決定的理由見 [decisions.md](decisions.md)（文中以 D-xx 標註）。
-> 圖與介面中的函式、訊息名稱都是**虛擬碼**。
+> 圖與介面中的函式名稱是**虛擬碼**；前端指令名稱沿用 NNGS（D-22），M1 的完整定義見 [spec_v2.md](spec_v2.md)。
 
 ## 1. 概觀
 
@@ -103,12 +103,12 @@ repo
 
 **行為**
 
-- 第一則訊息必須是 `hello{name}`。名稱只能用英數字與底線，長度 1～20，不可與線上玩家重複。
+- 第一則訊息必須是 `login{name}`（指令名稱沿用 NNGS，D-22）。名稱只能用英數字與底線，長度 1～20，不可與線上玩家重複。
 - 登入成功後收到 `welcome`：自己的名稱、目前的玩家列表（含狀態）、房間列表。
-- 玩家狀態：`空閒`、`對局中`、`觀戰中`。
+- 玩家可以同時在多個房間（D-21）：同時對局上限預設 5 盤，觀戰上限預設 10 盤（M2）。玩家列表顯示每人正在對局與觀戰的房間數。
 - **不推送**其他玩家的上線、離線與狀態變化（D-09）。玩家用 `who` 查詢最新列表。
 - 房間列表的新增、變更、移除會推送給在大廳的玩家。列表包含所有房間（預設公開可觀戰，D-15）：遊戲、棋盤大小、棋手、狀態（`等待中`、`進行中`、`已結束`）、觀戰人數。
-- 玩家在房間裡時，不接收房間列表的推送；回到大廳時重新收到 `welcome`。個人通知（邀請、私訊）不論在哪裡都會收到。
+- 大廳連線在玩家對局時仍保持，照常收房間列表推送與個人通知（邀請、私訊）。
 
 **服務**：大廳服務。
 
@@ -120,21 +120,22 @@ repo
 
 **行為**
 
-- 邀請者送出 `invite{to, settings}`。`settings`：遊戲（M1 只有圍棋）、棋盤大小（M1：9、19）、執色（黑、白、隨機）、貼目、讓子（M2）。
+- 邀請者送出 `match{to, settings}`。`settings`：遊戲（M1 只有圍棋）、棋盤大小（M1：9、19）、執色（黑、白、隨機）、貼目、讓子（M2）。
 - 大廳依序檢查，任一項不符就回錯誤：
   1. 對方在線；
   2. 不是自己；
-  3. 雙方都 `空閒`；
-  4. 雙方都沒有待回覆的邀請（每人同時最多一個，發出或收到都算）；
+  3. 雙方都未達同時對局上限；
+  4. 自己送出的待回覆邀請未達上限（預設 5），且兩人之間沒有其他待回覆的邀請；
   5. 對方沒有關閉邀請（M2）。
 - 邀請通過後推送給雙方，60 秒逾時。
 - 被邀請者回覆：
-  - **接受**：大廳呼叫房間服務 `CreateRoom`（兩個座位都指定），為雙方簽發入場券，以 `game_ready{ws_url, ticket}` 推給雙方，雙方狀態改為 `對局中`。
+  - **接受**：大廳呼叫房間服務 `CreateRoom`（兩個座位都指定），為雙方簽發入場券，以 `game_ready{room_id, ws_url, ticket}` 推給雙方，房間加進雙方的對局列表。
   - **拒絕**：通知雙方，邀請結束。
   - **還價**（M2）：用不同的設定回邀，視為拒絕原邀請，改由被邀請者向對方提出新邀請。
 - 邀請者可以撤回尚未回覆的邀請。
-- 邀請在以下情況自動結束，並通知仍在線的一方：逾時、任一方離線、任一方進入其他房間。
-- 兩人同時互相邀請：以大廳先處理到的為準，後到的因「已有待回覆的邀請」被拒絕。
+- 邀請在以下情況自動結束，並通知仍在線的一方：逾時、任一方與大廳斷線。
+- 兩人同時互相邀請：以大廳先處理到的為準，後到的因「兩人之間已有待回覆的邀請」被拒絕。
+- 開局後不清除雙方其他的邀請（可以同時下多盤）。
 
 **服務**：大廳服務（檢查、邀請狀態、簽發入場券）、房間服務（建房）。
 
@@ -148,19 +149,19 @@ sequenceDiagram
   participant R as 房間
   participant S as 規則服務
 
-  A->>L: invite(to=Bob, settings)
-  L->>L: 檢查（在線、空閒、沒有待回覆的邀請）
-  L-->>B: invite
-  B->>L: invite_reply(accept)
+  A->>L: match(to=Bob, settings)
+  L->>L: 檢查（在線、未達對局上限、沒有重複邀請）
+  L-->>B: match_request
+  B->>L: accept(match_id)
   L->>M: CreateRoom（兩個座位都指定，公開可觀戰）
   M->>R: 啟動 goroutine，設到場時限
   M-->>L: room_id, ws_url
   L->>L: 新增房間列表項、簽發入場券
   L-->>A: game_ready(ws_url, ticketA)
   L-->>B: game_ready(ws_url, ticketB)
-  A->>R: 連線 + hello(ticketA)
+  A->>R: enter(room_id, ticketA)
   R-->>A: 重連憑證
-  B->>R: 連線 + hello(ticketB)
+  B->>R: enter(room_id, ticketB)
   R-->>B: 重連憑證
   R->>S: apply(actions=[], action=start)
   S-->>R: 初始局面、進行中
@@ -177,7 +178,7 @@ sequenceDiagram
 
 **行為**
 
-- 玩家用 `game_ready` 裡的位址連房間服務，第一則訊息出示入場券。入場券無效、過期、已用過、或不屬於這個房間，就拒絕並斷線。
+- 前端與房間服務只開一條連線，同時承載多個房間；每則訊息帶 `room_id`（D-21）。每個房間各自出示入場券。入場券無效、過期、已用過、或不屬於這個房間，就拒絕進入該房間（不斷開連線）。
 - 座位只由房間分配；大廳以 `CreateRoom` 指定座位，或以 `ReserveSeat` 向房間要座位（開放房間，3.9 節）。
 - 連上後房間發給該連線一張**重連憑證**，前端存在瀏覽器（sessionStorage）。重新整理頁面或斷線後，用重連憑證連回原座位，並收到目前的完整狀態。
 - 到場時限：建房後 60 秒內有棋手沒連上，這局取消（3.6 節）。
@@ -200,7 +201,7 @@ sequenceDiagram
   4. 不合法：只回 `error{code, version}` 給送出者，附目前狀態。
 - 圍棋規則：提子、禁止自殺、positional superko；連續兩次 pass 進入終局（3.5 節）。
 - **先擺子**：在 `進行中` 階段輪到自己時，前端用與規則服務同一版的規則庫先檢查並立刻顯示；伺服器拒絕或版本不符時，依伺服器回傳的狀態重畫（D-14）。
-- **棋手對話**：`chat{text}` 只送給同房的棋手，存進棋譜。
+- **棋手對話**：`say{text}` 只送給同房的棋手，存進棋譜。
 
 **服務**：房間服務、規則服務。
 
@@ -215,9 +216,9 @@ sequenceDiagram
 - 雙方連續 pass 後，規則服務回傳 `等待雙方同意`，提案為**死子判斷與目數**（由估算器提出，6.3 節）。
 - 房間把提案寫進棋譜，版本加 1，暫停棋鐘（M2 起），開始確認時限（60 秒）。
 - 在此階段，棋手可以：
-  - **切換死子** `toggle_group{x, y}`：點選一塊棋切換死活。規則服務更新提案；版本加 1，**雙方先前的同意全部作廢**，確認時限重新計算。
-  - **同意** `agree{version}`：同意目前版本的提案。雙方都同意同一版本時，房間送出 `finalize`，規則服務依提案計算結果，這局 `已結束`。
-  - **恢復對局** `resume`：回到 `進行中`，照正常輪次繼續下（D-07）。之後再連續 pass 會重新提案。
+  - **切換死子** `play{at}`：與 NNGS 相同，此階段輸入座標即切換該塊棋的死活。規則服務更新提案；版本加 1，**雙方先前的同意全部作廢**，確認時限重新計算。
+  - **同意** `done{version}`：同意目前版本的提案。雙方都同意同一版本時，房間送出 `finalize`，規則服務依提案計算結果，這局 `已結束`。
+  - **恢復對局** `undo`：與 NNGS 相同，此階段的 `undo` 即回到 `進行中`，照正常輪次繼續下（D-07）。之後再連續 pass 會重新提案。
   - **認輸** `resign`：任何時候都可以。
 - 確認時限到：未回應者視為同意目前的提案（D-07）。
 - 計分採數子法（中國規則）。結果格式例如 `黑勝 3.5 目`、`白中盤勝`、`黑超時勝`、`中止`。
@@ -234,8 +235,8 @@ sequenceDiagram
   participant DB as PostgreSQL
   participant L as 大廳服務
 
-  B->>R: action(pass)
-  A->>R: action(pass)
+  B->>R: pass
+  A->>R: pass
   R->>S: apply
   S-->>R: 等待雙方同意，提案：死子與目數
   R->>DB: 寫入提案
@@ -243,7 +244,7 @@ sequenceDiagram
   R-->>A: state（標出死子與目數）
   R-->>B: state（標出死子與目數）
   loop 有人認為判斷有誤
-    B->>R: action(toggle_group, x, y)
+    B->>R: play(at)
     R->>S: apply
     S-->>R: 新提案
     R->>R: version 加 1，雙方同意作廢，重設確認時限
@@ -251,12 +252,12 @@ sequenceDiagram
     R-->>B: state（新提案）
   end
   alt 談不攏
-    B->>R: action(resume)
+    B->>R: undo
     R->>S: apply
     S-->>R: 進行中
   else 雙方同意同一版（或確認時限到）
-    A->>R: action(agree, version)
-    B->>R: action(agree, version)
+    A->>R: done(version)
+    B->>R: done(version)
     R->>S: apply(finalize)
     S-->>R: 已結束，結果：黑勝 3.5 目
     R->>DB: 寫入結果
@@ -299,7 +300,7 @@ sequenceDiagram
 
 **行為**
 
-- 棋手送出 `undo_request`。房間建立一個提案（撤回幾手），推給對手（D-19）。
+- 棋手在 `進行中` 階段送出 `undo` 請求悔棋。房間建立一個提案（撤回幾手），推給對手（D-19）。
 - 撤回手數由請求時的輪次決定：
 
   | 請求時機 | 撤回 | 撤回後輪到 |
@@ -335,7 +336,7 @@ sequenceDiagram
 
 **行為**
 
-- 房主送出 `create_open_room{settings}`。大廳呼叫 `CreateRoom`（只指定房主），房間列表顯示 `等待中 1/2`。
+- 房主送出 `seek{settings}`。大廳呼叫 `CreateRoom`（只指定房主），房間列表顯示 `等待中 1/2`。
 - 其他玩家按加入：大廳呼叫 `ReserveSeat`，拿到座位才簽發入場券；已滿則回覆 `full`，玩家可改為觀戰。
 - 坐滿後的開局步驟同 3.2 節。
 
@@ -348,7 +349,7 @@ sequenceDiagram
   participant M as 房間管理器
   participant R as 房間
 
-  A->>L: create_open_room(settings)
+  A->>L: seek(settings)
   L->>M: CreateRoom（只指定 Alice）
   M->>R: 啟動 goroutine
   L-->>A: game_ready(ws_url, ticketA)
@@ -383,15 +384,15 @@ sequenceDiagram
 
 | 方向 | 訊息 |
 | --- | --- |
-| 前端 → 大廳 | `hello{name}`、`who`、`invite{to, settings}`、`invite_reply{invite_id, accept}`、`withdraw{invite_id}`、`my_games`、`get_record{record_id}`；M2：`create_open_room{settings}`、`join{room_id}`、`spectate{room_id}` |
-| 大廳 → 前端 | `welcome{you, players, rooms}`、`players`、`rooms{op: add/update/remove, room}`、`invite{invite_id, from, to, settings}`、`invite_result{invite_id, result}`、`game_ready{ws_url, ticket}`、`games`、`record`、`error{code, message}` |
+| 前端 → 大廳 | `login{name}`、`who`、`games`、`match{to, settings}`、`accept{match_id}`、`decline{match_id}`、`withdraw{match_id}`、`pending`、`rejoin{room_id}`、`results`、`moves{room_id}`；M2：`seek{settings}`（開放房間）、`join{room_id}`、`observe{room_id}` |
+| 大廳 → 前端 | `welcome{you, players, rooms, games}`、`players`、`rooms{op: add/update/remove, room}`、`match_request`、`match_sent`、`match_result{match_id, result}`、`pending`、`game_ready{room_id, ws_url, ticket}`、`results`、`moves`、`error{code, message}` |
 
 ### 4.2 前端 ↔ 房間
 
 | 方向 | 訊息 |
 | --- | --- |
-| 前端 → 房間 | `hello{入場券 或 重連憑證}`、`action{base_version, type, …}`（`play`、`pass`、`resign`、`toggle_group`、`agree`、`resume`；M2：`undo_request`、`undo_reply`）、`chat{text}`、`kibitz{text}`（M2） |
-| 房間 → 前端 | `state{version, 階段, view, proposal, 同意狀態, 時鐘, 觀戰人數}`、`reconnect_token`、`error{code, version}`、`chat`、`kibitz`（只送觀戰者）、`game_over{result}` |
+| 前端 → 房間 | 所有訊息帶 `room_id`：`enter{入場券 或 重連憑證}`、`play{at, base_version}`、`pass`、`resign`、`done{version}`、`undo`、`score`、`say{text}`、`refresh`、`leave`；M2：悔棋的請求與回覆、`kibitz{text}` |
+| 房間 → 前端 | 所有訊息帶 `room_id`：`state{version, 階段, view, proposal, 同意狀態, 時鐘, 觀戰人數}`、`reconnect_token`、`score`、`error{code, version}`、`say`、`kibitz`（只送觀戰者）、`game_over{result}` |
 
 `view`、`proposal`、`result` 由規則服務產生，房間原樣轉送；前端依遊戲類型顯示。
 
