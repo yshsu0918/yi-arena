@@ -1,13 +1,13 @@
-# 規格 v2：里程碑 1（能完整下一盤圍棋）
+# 規格 v2：里程碑 1（能完整下一盤圍棋與五子棋）
 
 > 整理日期：2026-11-01。狀態：**M1 的實作規格**。
 > 只涵蓋 M1。完整的功能規劃見 [spec_v1.md](spec_v1.md)，階段見 [feature-list.md](feature-list.md)，理由見 [decisions.md](decisions.md)（文中以 D-xx 標註）。
 > 訊息以 JSON 描述欄位；實際的 proto 定義在 `proto/`，以本文件為準。
-> **指令名稱沿用 NNGS**（D-22），對照見附錄 A；**一位玩家可以同時在多個房間對局**（D-21）。
+> **指令名稱沿用 NNGS**（D-22），對照見附錄 A；**一位玩家可以同時在多個房間對局**（D-21）；**M1 同時支援圍棋與五子棋**（D-23）。
 
 ## 1. 範圍
 
-**M1 要做到**：訪客在大廳約局，進房下完 9 路或 19 路圍棋，雙方確認死子與目數後定案，結果與棋譜保存下來。一位玩家可以同時進行多盤對局。
+**M1 要做到**：訪客在大廳約局，進房下完 9 路或 19 路圍棋（雙方確認死子與目數後定案），或 15 路五子棋（連成五子即結束），結果與棋譜保存下來。一位玩家可以同時進行多盤對局。五子棋用來證明平台不改程式就能跑第二種遊戲（D-10、D-23）。
 
 **M1 包含**
 
@@ -16,12 +16,13 @@
 - 同時參與多個房間（多盤對局）
 - 建房、入場券、重連憑證、從大廳回到對局（`rejoin`）
 - 對局：落子、`pass`、`resign`、`say`、`refresh`
-- 終局：死子提案、點選切換死子、`done`、`undo`（回到對局）、`score`、數子法計分
+- 圍棋終局：死子提案、點選切換死子、`done`、`undo`（回到對局）、`score`、數子法計分
+- 五子棋：15 路 freestyle（無禁手），連五以上獲勝，下滿和局
 - 保底時限（不是棋鐘）
 - 棋譜記錄、`moves`、`results`
 - 強制關房（管理用）
 
-**M1 不包含**：棋鐘、悔棋（對局中的 `undo`）、觀戰與講評、開放房間、還價、`open` 開關、讓子、五子棋、帳號登入、私訊與好友、大廳聊天、匯出 SGF。
+**M1 不包含**：棋鐘、悔棋（對局中的 `undo`）、觀戰與講評、開放房間、還價、`open` 開關、讓子、五子棋的連珠規則（禁手）、帳號登入、私訊與好友、大廳聊天、匯出 SGF。
 
 ## 2. 系統組成
 
@@ -63,16 +64,18 @@
 
 | 欄位 | 型別 | M1 允許值 | 預設 |
 | --- | --- | --- | --- |
-| `game` | 字串 | `go` | `go` |
-| `size` | 整數 | `9`、`19` | `19` |
+| `game` | 字串 | `go`、`gomoku` | `go` |
+| `size` | 整數 | 圍棋 `9`、`19`；五子棋 `15` | 圍棋 `19`；五子棋 `15` |
 | `color` | 字串 | `B`、`W`、`random`（發出邀請者執的顏色） | `random` |
-| `komi` | 數字 | 0～10，間隔 0.5 | `7.5` |
-| `rules` | 字串 | `chinese`（數子法，D-07） | `chinese` |
+| `komi` | 數字 | 只用於圍棋：0～10，間隔 0.5 | `7.5` |
+| `rules` | 字串 | 圍棋 `chinese`（數子法，D-07）；五子棋 `freestyle`（無禁手） | 依遊戲 |
 | `rated` | 布林 | `false` | `false` |
+
+不屬於該遊戲的欄位（例如五子棋的 `komi`）會被忽略。
 
 ### 3.2 座標
 
-沿用 NNGS 寫法：欄為英文字母（跳過 `I`），列為數字、由下往上算，例如 19 路的 `A1` 是左下角、`T19` 是右上角。內部轉成 `goban-engine` 的 (x, y)。
+沿用 NNGS 寫法：欄為英文字母（跳過 `I`），列為數字、由下往上算，例如 19 路的 `A1` 是左下角、`T19` 是右上角；15 路五子棋為 `A1`～`P15`。規則服務內部再轉成 (x, y)。
 
 ### 3.3 玩家 `Player`
 
@@ -121,9 +124,9 @@
 
 | 欄位 | 說明 |
 | --- | --- |
-| `winner` | `B`、`W` 或 `none`（中止） |
-| `reason` | `score`（點目）、`resign`（認輸）、`abort`（中止） |
-| `text` | 例如 `B+3.5`、`W+R`、`中止` |
+| `winner` | `B`、`W`，或 `none`（和局、中止） |
+| `reason` | `score`（圍棋點目）、`five`（五子棋連五）、`board_full`（五子棋下滿和局）、`resign`（認輸）、`abort`（中止） |
+| `text` | 例如 `B+3.5`、`W+R`、`B+5`（連五）、`和局`、`中止` |
 
 ## 4. 功能
 
@@ -176,7 +179,7 @@
 
 1. 輪到的棋手送：
    - `play{at, base_version}`：`at` 為座標，例如 `D4`；
-   - `pass{base_version}`；
+   - `pass{base_version}`：只有圍棋；五子棋送 `pass` → `not_supported`；
    - `resign`：任何階段都可以。
 2. 房間依序檢查：
    1. 這條連線已 `enter` 這個房間且是棋手 → 否則 `not_in_room`；
@@ -184,14 +187,15 @@
    3. `base_version` 等於目前版本 → 否則 `stale_version`；
    4. 輪到送出者 → 否則 `not_your_turn`；
    5. 座標格式正確 → 否則 `invalid_coordinate`；
-   6. 呼叫規則服務 `Apply`；不合法 → `occupied`、`suicide`、`ko`、`out_of_board`。
+   6. 呼叫規則服務 `Apply`；不合法 → `occupied`、`suicide`、`ko`、`out_of_board`、`not_supported`。
 3. 合法：寫入棋譜（第 8 章）；成功後版本加 1，送新的 `state` 給雙方。
 4. 錯誤只回給送出者：`error{room_id, code, version, state}`。
-5. **先擺子**：前端在 `playing` 階段輪到自己時，用 `goban` 先檢查並顯示；收到 `error` 或版本不符時，依 `state` 重畫（D-14）。
+5. **先擺子**：前端在 `playing` 階段輪到自己時，用與規則服務同一份規則庫先檢查並顯示（圍棋用 `goban`，五子棋用五子棋模組）；收到 `error` 或版本不符時，依 `state` 重畫（D-14）。
 6. `say{text}`：1～500 字元，送給同房的棋手，寫入棋譜。
 7. `refresh`：重送目前的 `state`。
+8. **五子棋的結束**：落子後連成五子以上，規則服務直接回傳 `finished` 與 `Result{winner, reason: five}`；棋盤下滿仍沒人連五則為和局（`reason: board_full`）。五子棋不會進入 `agreement` 階段。
 
-### 4.5 終局
+### 4.5 圍棋終局
 
 1. 連續兩次 `pass`（中間沒有落子）→ 規則服務回傳階段 `agreement` 與提案。
 2. **初始提案**：規則服務用估算器判斷死子（D-17）。`ESTIMATOR=off` 或估算失敗時，初始提案為**沒有死子**，由雙方手動點選；流程不變。
@@ -376,13 +380,18 @@ stateDiagram-v2
 | 階段 | 允許的指令 |
 | --- | --- |
 | `waiting` | `say`、`refresh` |
-| `playing` | `play`、`pass`（輪到者）、`resign`、`say`、`refresh` |
-| `agreement` | `play`（切換死子）、`done`、`undo`（回到對局）、`score`、`resign`、`say`、`refresh` |
+| `playing` | `play`、`pass`（輪到者，只有圍棋）、`resign`、`say`、`refresh` |
+| `agreement` | `play`（切換死子）、`done`、`undo`（回到對局）、`score`、`resign`、`say`、`refresh`（只有圍棋會進入此階段） |
 | `finished` | `say`、`refresh`、`leave` |
 
 房間內部的原則（事件迴圈、先寫紀錄再廣播、送出佇列、計時器編號、`recover`）同 [spec_v1.md 第 5 章](spec_v1.md#5-房間內部)；M1 沒有棋鐘，計時器只用於第 4.6 節的保底時限。閘道依訊息的 `room_id` 把指令送到對應房間的事件佇列；一條連線 `enter` 的每個房間，都各自是房間的一條棋手連線。
 
-## 7. 規則服務（圍棋）
+## 7. 規則服務
+
+規則服務依 `game` 分派到規則庫。房間不判斷遊戲類型（D-10）。
+
+### 7.1 圍棋（`goban-engine`）
+
 
 - 以 `goban-engine` 重放 `actions`，判斷合法、提子、打劫（positional superko）、禁止自殺；座標由 `D4` 形式轉為 (x, y)。
 - `pass` 後判斷是否連續兩次 pass；是則進入 `agreement` 並產生提案：
@@ -394,6 +403,14 @@ stateDiagram-v2
 - `resign`：產生 `W+R` 或 `B+R`。
 - 實作注意：`autoscore` 會修改傳入的棋盤陣列，要傳副本；估算器回傳 1／2，要轉換成正負數值。
 
+### 7.2 五子棋（五子棋模組）
+
+- 規則模組沿用三框架 PoC 的 `rules.ts`（含單元測試）：15 路、黑先、輪流落子、不可下在已有棋子的點。
+- 落子後檢查四個方向，連成五子以上即獲勝（freestyle，無禁手）。
+- 棋盤下滿仍沒人連五：和局。
+- 不支援 `pass`、`resume`、`propose`、`finalize`（回 `not_supported`）。
+- 前端用同一份模組做先擺子的檢查。
+
 ## 8. 資料庫
 
 ### 8.1 `rooms` 資料庫（房間服務擁有）
@@ -404,7 +421,7 @@ stateDiagram-v2
 | `actions` | `room_id`、`seq`、`type`、`seat`、`data`（JSON：座標、提案、對話內容）、`received_at` |
 
 - `GameRecord` = `games` 一筆 + 依 `seq` 排序的 `actions`。棋譜 ID 即 `room_id`。
-- `rules_version` 記錄規則服務使用的 `goban-engine` 版本。
+- `rules_version` 記錄規則服務使用的規則庫版本（`goban-engine` 或五子棋模組）。
 
 ### 8.2 `lobby` 資料庫（大廳服務擁有）
 
@@ -449,6 +466,7 @@ stateDiagram-v2
 | `not_your_turn` | 房間 | 還沒輪到你 |
 | `invalid_coordinate` | 房間 | 座標格式錯誤 |
 | `occupied`、`suicide`、`ko`、`out_of_board` | 規則 | 落子不合法 |
+| `not_supported` | 規則 | 此遊戲不支援這個指令（例如五子棋的 `pass`） |
 | `rules_unavailable`、`storage_unavailable` | 房間 | 暫時無法處理 |
 
 ## 11. 驗收條件
@@ -465,7 +483,7 @@ stateDiagram-v2
 - [ ] 開新分頁，以同名 `login` 後用 `rejoin` 回到對局；保留期內他人無法使用該名稱。
 - [ ] 到場時限、單一棋手斷線、全員斷線、結束後關房，都在時限內完成，不留下殘留的房間或 `games` 紀錄。
 - [ ] 棋譜完整存在 `rooms` 資料庫；`results` 與 `moves` 回傳正確；大廳的 `lobby` 資料庫只有摘要。
-- [ ] 房間服務的測試用一個假遊戲（連三子即結束）跑過，房間程式碼不含圍棋專屬的邏輯（D-10）。
+- [ ] 下完一局五子棋：連五獲勝、下滿和局都正確，五子棋送 `pass` 回 `not_supported`；**房間服務與大廳服務沒有為五子棋寫任何專屬的程式碼**，只有規則服務多一個模組、前端多一個棋盤元件（D-10、D-23）。
 - [ ] 三個服務各自獨立啟動；`lobby/` 與 `room/` 沒有互相 import。
 
 ## 附錄 A：NNGS 指令對照與函式呼叫（M1）
@@ -479,6 +497,7 @@ NNGS 1.1.22 的完整指令對照見 [feature-list.md 附錄](feature-list.md#�
 - NNGS 的指令打在一條 telnet 連線上；我們分成兩條連線：**大廳指令**送大廳服務，**對局指令**送房間服務（D-01）。
 - NNGS 以遊戲編號指定對局，而且同一時間只能下一盤，對局指令預設作用在「目前這盤」；我們允許同時多盤（D-21），所以對局指令都帶 `room_id`。
 - 少數指令是我們新增、NNGS 沒有的：`enter`（以入場券進房）、`rejoin`（從大廳回到對局）、`leave`（離開已結束的房間）。
+- NNGS 只有圍棋；五子棋沿用同一套指令（`match` 時設 `game: gomoku`），不使用圍棋專屬的 `pass`、`done`、`score` 與點目階段的 `undo`。
 
 ### A.2 大廳指令
 
