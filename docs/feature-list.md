@@ -182,7 +182,7 @@
 | 禁言、封鎖帳號、封 IP |  | 未來（公開上線前必須有） | 中 | — | `muzzle`、`gmuzzle`、`aban`、`nuke` 等 |
 | 系統公告 |  | 未來 | 低 | — | `announce`、`createnews` |
 | 管理員查詢 | 查玩家、登入紀錄 | 未來 | 中 | — | `chkpl`、`chkip`、`logons`、`last` |
-| 強制關房、停機 |  | M1（強制關房）、未來（其餘） | 低 | 規格（`CloseRoom`） | `adrop`、`shutdown` |
+| 強制關房、停機 |  | M1（強制關房）、未來（其餘） | 低 | 規格（`CloseRoom`） | `nuke`（踢下線，NNGS 沒有直接結束對局的指令）、`shutdown` |
 | 檢舉與防作弊偵測 | AI 吻合率比對、人工審查 | 未來 | 高 | — | — |
 
 ## 15. 不做的項目與原因

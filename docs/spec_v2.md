@@ -406,3 +406,83 @@ stateDiagram-v2
 - [ ] 棋譜完整存在 `rooms` 資料庫；`my_games` 與 `get_record` 回傳正確；大廳的 `lobby` 資料庫只有摘要。
 - [ ] 房間服務的測試用一個假遊戲（連三子即結束）跑過，房間程式碼不含圍棋專屬的邏輯（D-10）。
 - [ ] 三個服務各自獨立啟動；`lobby/` 與 `room/` 沒有互相 import。
+
+## 附錄 A：NNGS 指令對照（M1）
+
+NNGS 1.1.22 的完整指令對照見 [feature-list.md 附錄](feature-list.md#附錄nngs-指令對照)。以下只列與 M1 相關的指令。
+
+### A.1 M1 有對應的
+
+| NNGS 指令 | 用途 | M1 的對應 | 差異 |
+| --- | --- | --- | --- |
+| 輸入名稱登入（訪客） | 登入 | 大廳 `hello{name}` | 相同，都是訪客名稱 |
+| `who` | 玩家列表 | 大廳 `who` → `players` | NNGS 可加篩選條件；M1 回傳全部 |
+| `games` | 進行中的對局列表 | 大廳 `welcome` 的 `rooms` 與 `rooms` 推送 | NNGS 要自己查；M1 主動推送 |
+| `match` | 發出邀請（含設定） | 大廳 `invite{to, settings}` | 見附錄 B |
+| `accept` | 接受邀請 | 大廳 `invite_reply{accept: true}` | NNGS 也可回發相同條件的 `match` 表示接受 |
+| `decline` | 拒絕邀請 | 大廳 `invite_reply{accept: false}` | |
+| `withdraw` | 撤回自己的邀請 | 大廳 `withdraw{invite_id}` | |
+| 座標（例如 `D4`） | 落子 | 房間 `action{type: play, x, y}` | M1 座標從 0 起算 |
+| `pass` | pass | 房間 `action{type: pass}` | |
+| `resign` | 認輸 | 房間 `action{type: resign}` | |
+| `say` | 對手間對話 | 房間 `chat{text}` | |
+| `refresh`、`status` | 重新顯示局面 | 重連時的 `state`；每次動作後的 `state` | M1 不需另外查詢 |
+| 點選死子 | 標記死子 | 房間 `action{type: toggle_group, x, y}` | M1 另有估算器提出的初始判斷 |
+| `undo`（點目階段） | 回到對局 | 房間 `action{type: resume}` | |
+| `done` | 確認點目 | 房間 `action{type: agree, version}` | M1 需指定同意的版本；任一方改動死子會清除同意 |
+| `score` | 預覽目數 | `state.proposal.score` | M1 每次提案都附目數 |
+| `moves` | 查看棋步 | 大廳 `get_record` | |
+| `results` | 對局結果紀錄 | 大廳 `my_games` | NNGS 可查任何人；M1 只查自己 |
+| `quit` | 離開伺服器 | 關閉連線 | |
+| `nuke`（管理） | 把玩家踢下線，對局因斷線而封盤 | 房間服務 gRPC `CloseRoom` | NNGS 沒有直接結束對局的指令；M1 直接把這局記為中止 |
+
+### A.2 相關但不在 M1 的
+
+| NNGS 指令 | 用途 | 階段 |
+| --- | --- | --- |
+| `pending` | 列出待回覆的邀請 | M2 |
+| `match`（用不同條件回發） | 還價 | M2 |
+| `open` | 是否接受邀請 | M2 |
+| `handicap` | 讓子 | M2 |
+| `time`、`pause`、`unpause`、`addtime` | 計時 | 棋鐘 M2；暫停、加時未來 |
+| `undo`（對局中） | 悔棋 | M2 |
+| `observe`、`kibitz`、`all` | 觀戰、講評 | M2 |
+| `sgf`、`mail` | 取得棋譜檔 | 匯出 SGF M2 |
+| `adjourn`、`load`、`stored` | 封盤、續下 | 未來 |
+| `censor` | 封鎖 | M3 |
+| `tell` | 私訊 | M3 |
+| `komi` | 對局中改貼目 | 不做（建房時設定） |
+| `tmatch`、`teach`、`pair` | 比賽、研究盤、連棋 | 未來 |
+
+## 附錄 B：邀局流程對照（NNGS ↔ M1）
+
+### B.1 流程
+
+| 步驟 | NNGS | M1 |
+| --- | --- | --- |
+| 1. 發出邀請 | `match bob B 19 10 10`：對手、執色、棋盤、時間、讀秒 | `invite{to: "bob", settings: {color, board_size, komi}}`；M1 沒有時間設定（棋鐘在 M2），多了貼目 |
+| 2. 發出前的檢查 | 自己不在對局中；對手在線；不是自己（自己請用 `teach`）；雙方沒有互相封鎖；對手是 `open` 狀態；對手不在對局中；待回覆的邀請數未達上限 | 對手在線；不是自己；雙方都 `idle`；雙方都沒有待回覆的邀請 |
+| 3. 自己的狀態 | 發出邀請時自動把自己設為 `open` | 不變 |
+| 4. 對方收到 | 文字提示，附「用 `match alice W 19 10 10` 接受或 `decline alice` 拒絕」 | `invite` 訊息，附設定與 `invite_id` |
+| 5. 接受 | `accept`，或回發完全相同的 `match`（顏色互補） | `invite_reply{accept: true}` |
+| 6. 還價 | 用不同條件回發 `match`：自動拒絕原邀請，改由對方提出新邀請 | M1 沒有（M2） |
+| 7. 拒絕 | `decline` | `invite_reply{accept: false}` |
+| 8. 撤回 | `withdraw` | `withdraw{invite_id}` |
+| 9. 逾時 | **沒有**，邀請一直留著，直到處理或登出 | 60 秒自動結束 |
+| 10. 開局 | 接受的當下立刻開局；雙方本來就連在同一台伺服器上 | 大廳呼叫 `CreateRoom` → 簽發入場券 → 雙方連進房間 → 都到場才開局；60 秒內沒到場則取消 |
+| 11. 開局後的清理 | 清掉雙方其他所有約局邀請 | M1 每人同時只有一個邀請，不需要 |
+| 12. 通知其他人 | 推送「Match N: X vs Y」給開啟 `ginform` 的玩家 | 房間列表推送 `rooms{op: add}` 給大廳中所有 `idle` 的玩家 |
+| 13. 一方登出 | 清掉他所有的邀請（對方收到撤回通知） | 邀請結束，通知仍在線的一方 `invite_result{cancelled}` |
+
+### B.2 主要差異
+
+| 項目 | NNGS | M1 | 原因 |
+| --- | --- | --- | --- |
+| 同時的邀請數 | 可以有多個 | 每人一個 | 簡化狀態，避免同時接受兩個邀請 |
+| 逾時 | 無 | 60 秒 | 網頁上離開不一定會登出，避免邀請一直掛著 |
+| 接受方式 | `accept` 或回發相同條件 | 明確的接受訊息 | 網頁按鈕不需要用「回發相同條件」表示接受 |
+| 還價 | 有 | M2 | M1 先求能下完一盤 |
+| 接受邀請開關（`open`） | 有，發邀請會自動打開 | M2 | 同上 |
+| 封鎖檢查 | 有 | M3（封鎖功能在 M3） | |
+| 開局 | 立即 | 經過入場券與到場時限 | 大廳與房間是不同服務（D-01），玩家要另外連進房間 |
+| 計時設定 | 有 | M2 | M1 沒有棋鐘 |
