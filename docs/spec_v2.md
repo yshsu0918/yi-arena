@@ -153,7 +153,7 @@
 
    | 指令或事件 | 誰可以 | 結果 |
    | --- | --- | --- |
-   | `accept{match_id}` | 被邀請者 | 再檢查一次雙方對局數（滿了 → `too_many_games`，邀請保留）；通過則建房（4.3），雙方收到 `match_result{accepted}` |
+   | `accept{match_id}` | 被邀請者 | 再檢查一次雙方對局數（滿了 → `too_many_games`，邀請保留）；通過則進入「建房中」並呼叫 `CreateRoom`（4.3）：成功 → 雙方收到 `match_result{accepted}`；失敗 → 被邀請者收到 `error{room_unavailable}`，邀請回到待回覆 |
    | `decline{match_id}` | 被邀請者 | 雙方收到 `match_result{declined}` |
    | `withdraw{match_id}` | 邀請者 | 雙方收到 `match_result{withdrawn}` |
    | 逾時 | — | 雙方收到 `match_result{expired}` |
@@ -162,6 +162,37 @@
 5. 不是邀請的對象卻 `accept`／`decline`，或不是邀請者卻 `withdraw` → `no_such_match`。
 6. `pending` → 回傳自己送出與收到的待回覆邀請。
 7. 一個人可以同時有多個邀請；與 NNGS 不同的是，開局後**不會**清掉雙方其他的邀請（多房間下仍可再開局）。
+8. **建房中**：等待 `CreateRoom` 回應的期間，`accept`／`decline`／`withdraw` 都回 `no_such_match`，逾時不觸發，斷線也不取消（房間建好後，斷線的一方可用 `rejoin` 進房，否則由到場時限取消）。若回到待回覆時已超過 `MATCH_TTL`，立即逾時。
+
+邀請的狀態：
+
+```mermaid
+stateDiagram-v2
+  state "待回覆 pending" as pending
+  state "建房中" as creating
+  state "已接受 accepted" as accepted
+  state "已拒絕 declined" as declined
+  state "已撤回 withdrawn" as withdrawn
+  state "已逾時 expired" as expired
+  state "已取消 cancelled" as cancelled
+
+  [*] --> pending: match 通過第 2 步檢查
+  pending --> pending: accept 但對局數已滿（too_many_games）
+  pending --> creating: accept 通過再檢查
+  creating --> accepted: CreateRoom 成功
+  creating --> pending: CreateRoom 失敗（room_unavailable）
+  pending --> declined: decline
+  pending --> withdrawn: withdraw
+  pending --> expired: MATCH_TTL 到
+  pending --> cancelled: 任一方與大廳斷線
+  accepted --> [*]: 送 game_ready 給雙方（4.3）
+  declined --> [*]
+  withdrawn --> [*]
+  expired --> [*]
+  cancelled --> [*]
+```
+
+第 2 步檢查失敗時不建立 `Match`，只回 `error`。除了「建房中」以外，每次狀態改變都會送 `match_result` 給雙方（`cancelled` 只送給仍在線的一方）；結束的邀請從 `pending` 列表移除。
 
 ### 4.3 建房與入房
 
@@ -172,6 +203,25 @@
 5. 閘道驗證入場券：無效 → `error{room_id, invalid_ticket | ticket_used | ticket_expired}`（只拒絕這個房間，不斷開連線）。
 6. 成功 → 房間送 `reconnect_token{room_id, token}` 與 `state`。
 7. 兩位棋手都到場：房間呼叫規則服務開局，送 `state` 給雙方，回報 `room.started`。
+
+房間在 `waiting` 階段的狀態：
+
+```mermaid
+stateDiagram-v2
+  state "沒人到場" as none
+  state "一位到場" as one
+  state "開局 playing" as playing
+  state "取消" as cancelled
+
+  [*] --> none: CreateRoom（設到場時限 60 秒）
+  none --> one: 一位 enter
+  one --> playing: 另一位 enter（取消到場時限）
+  none --> cancelled: 到場時限到
+  one --> cancelled: 到場時限到
+  cancelled --> [*]: 回報 room.cancelled，房間關閉
+```
+
+到場的一方在 `waiting` 斷線不會退回「沒人到場」（座位已確定），只是還不能開局；`waiting` 期間不跑斷線時限，由到場時限保底。
 
 ### 4.4 對局
 
@@ -214,6 +264,40 @@
 6. 確認時限到：沒有 `done` 的一方視為同意目前提案（D-07），同第 5 步。
 7. 結束時：寫入結果，送 `game_over{result, record_id}` 給雙方，回報 `room.finished`。
 
+雙 pass 之後的狀態（只有圍棋）：
+
+```mermaid
+stateDiagram-v2
+  state "playing：上一手不是 pass" as p0
+  state "playing：上一手是 pass" as p1
+  state "agreement：提案 vN，沒有人 done" as a0
+  state "agreement：提案 vN，一方 done" as a1
+  state "finalize（規則服務計分）" as fin
+  state "finished" as finished
+
+  [*] --> p0
+  p0 --> p1: pass
+  p1 --> p0: play
+  p1 --> a0: pass（第二次）→ 初始提案 v1，設確認時限
+  a0 --> a1: done
+  a1 --> fin: 另一方 done
+  a0 --> a0: play 切換死子
+  a1 --> a0: play 切換死子
+  a0 --> fin: 確認時限到
+  a1 --> fin: 確認時限到
+  a0 --> p0: undo
+  a1 --> p0: undo
+  fin --> finished: Result
+  finished --> [*]
+```
+
+- 切換死子：提案版本加 1（vN+1）、重設確認時限；`done` 都要帶目前版本 `done{vN}`。
+- `undo`：死子標記清除，照正常輪次繼續。
+- 任何狀態下 `resign` 或保底時限中止，都直接到 `finished`（圖中省略）。
+- 已 `done` 的一方再送 `done` 不改變狀態；`done` 帶的版本不是 vN → `stale_version`，狀態不變。
+- 切換死子由**任一方**送出都會清除**雙方**的 `done`，包括送出者自己的。
+- 從 `undo` 回到 `playing` 後，要再連續兩次 `pass` 才會重新進入 `agreement`，重新產生初始提案（版本號繼續累加，不重設）。
+
 ### 4.6 保底時限
 
 M1 沒有棋鐘，但房間一定要會結束（D-13）。每個房間各自計算。
@@ -228,6 +312,57 @@ M1 沒有棋鐘，但房間一定要會結束（D-13）。每個房間各自計�
 | 結束後 60 秒 | 局結束 | — | 房間關閉（棋手也可以先送 `leave`） |
 
 中止的局同樣寫入結果與棋譜，回報 `room.finished`。一位玩家斷線時，他所在的每個房間都各自開始計時。
+
+各階段會跑的時限（進入 `finished` 時，其他時限全部取消）：
+
+| 階段 | 時限 |
+| --- | --- |
+| `waiting` | 到場 |
+| `playing` | 對局總時長、斷線（單一棋手、全員） |
+| `agreement` | 對局總時長、斷線（單一棋手、全員）、確認 |
+| `finished` | 結束後 |
+
+**每一個計時器**的狀態（計時器編號的做法見 [spec_v1.md 5.3](spec_v1.md#53-超時判定)）：
+
+```mermaid
+stateDiagram-v2
+  state "未設定" as idle
+  state "計時中（編號 g）" as armed
+  state "到期" as fired
+
+  [*] --> idle
+  idle --> armed: 設定（編號加 1）
+  armed --> armed: 重設（編號加 1）
+  armed --> idle: 取消（編號加 1）
+  armed --> fired: 收到 TimerFired，編號是 g
+  fired --> [*]: 執行上表的「到期時」動作
+```
+
+- 計時器到期只把 `TimerFired{編號}` 放進房間的事件佇列，不直接改狀態；房間依序處理，所以排在它前面的指令（例如確認時限前送到的 `done` 或切換死子）會先生效，切換死子會重設確認時限，使這個 `TimerFired` 變成舊編號而被忽略。
+- 收到編號不是 g 的 `TimerFired`（已取消或已重設的舊計時）一律忽略，狀態不變。
+- 「取消」與「重設」都讓編號加 1，因此已經在佇列裡的舊 `TimerFired` 一律無效。
+
+**斷線時限**（`playing`、`agreement` 階段）：
+
+```mermaid
+stateDiagram-v2
+  state "雙方在線" as both
+  state "一方斷線（該棋手的 10 分鐘計時中）" as one
+  state "全員斷線（5 分鐘計時中，各自的 10 分鐘繼續算）" as none
+  state "中止 abort" as abort
+
+  [*] --> both
+  both --> one: 一位棋手斷線
+  one --> both: 該棋手重連（取消他的 10 分鐘）
+  one --> none: 另一位也斷線
+  none --> one: 任一位重連（取消 5 分鐘與他的 10 分鐘）
+  one --> abort: 10 分鐘到
+  none --> abort: 5 分鐘或任一位的 10 分鐘先到
+  abort --> [*]: 進入 finished
+```
+
+- 每位棋手的 10 分鐘各自獨立，從**他自己**斷線時開始算，不因對方斷線或重連而重設。
+- 「斷線」指該棋手在這個房間沒有任何連線；他重新 `enter` 這個房間才算重連，只重連大廳不算。
 
 ### 4.7 重連
 
@@ -437,6 +572,7 @@ stateDiagram-v2
 | 情況 | M1 的處理 |
 | --- | --- |
 | 寫入棋譜失敗 | 指令不算數，回 `error{storage_unavailable}` |
+| `CreateRoom` 失敗或逾時 | 邀請回到待回覆，被邀請者收到 `error{room_unavailable}`，可以再 `accept` |
 | 規則服務逾時或錯誤 | 指令不算數，回 `error{rules_unavailable}`；棋手可以重送 |
 | 房間服務重啟 | 進行中的局中止（M1 不還原）；大廳對帳時從列表與玩家的 `games` 移除 |
 | 大廳服務重啟 | 對局不受影響；玩家重新 `login`；大廳以 `ListRooms` 重建房間列表與每位玩家的 `games` |
@@ -455,6 +591,7 @@ stateDiagram-v2
 | `too_many_matches` | 大廳 | 自己送出的待回覆邀請已達上限 |
 | `duplicate_match` | 大廳 | 兩人之間已有待回覆的邀請 |
 | `no_such_match` | 大廳 | 邀請不存在，或你不能對它做這個動作 |
+| `room_unavailable` | 大廳 | 房間服務無法建房，邀請保留 |
 | `not_your_game` | 大廳 | `rejoin` 的房間不是你的對局 |
 | `no_such_record` | 大廳 | 棋譜不存在 |
 | `invalid_ticket`、`ticket_used`、`ticket_expired` | 房間 | 入場券有問題 |
