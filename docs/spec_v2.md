@@ -407,40 +407,57 @@ stateDiagram-v2
 - [ ] 房間服務的測試用一個假遊戲（連三子即結束）跑過，房間程式碼不含圍棋專屬的邏輯（D-10）。
 - [ ] 三個服務各自獨立啟動；`lobby/` 與 `room/` 沒有互相 import。
 
-## 附錄 A：NNGS 指令對照（M1）
+## 附錄 A：NNGS 指令對照與函式呼叫（M1）
 
-NNGS 1.1.22 的完整指令對照見 [feature-list.md 附錄](feature-list.md#附錄nngs-指令對照)。以下只列與 M1 相關的指令。
+NNGS 1.1.22 的完整指令對照見 [feature-list.md 附錄](feature-list.md#附錄nngs-指令對照)。本附錄只列 M1 範圍。
 
-### A.1 M1 有對應的
+### A.1 命名原則
 
-| NNGS 指令 | 用途 | M1 的對應 | 差異 |
+- **前端送出的訊息名稱沿用 NNGS 的指令名稱**（例如 `who`、`match`、`accept`、`say`、`done`），語意盡量相同；參數改成 JSON 欄位。
+- **座標沿用 NNGS 的寫法**：英文字母（跳過 I）加數字，例如 `D4`，數字由下往上算。內部再轉成 `goban-engine` 的 (x, y)。
+- NNGS 的指令是「打在一條 telnet 連線上的文字」；我們的指令分成兩條連線：**大廳指令**送到大廳服務，**對局指令**送到房間服務（D-01）。
+- NNGS 以遊戲編號（1、2、3…）指定對局；我們用 `room_id`。對局指令預設作用在「這條連線所在的房間」，所以和 NNGS 一樣不用每次指定。
+
+> 註：本附錄的訊息名稱與正文第 4～5 章（`invite`、`invite_reply`、`toggle_group`、`agree`、`resume`、`chat`、`my_games`、`get_record`）不同。採用本附錄的命名後，正文要同步改名，見 A.5。
+
+### A.2 大廳指令
+
+| NNGS 指令 | M1 訊息 | 函式呼叫（大廳服務） | 架構差異與做法 |
 | --- | --- | --- | --- |
-| 輸入名稱登入（訪客） | 登入 | 大廳 `hello{name}` | 相同，都是訪客名稱 |
-| `who` | 玩家列表 | 大廳 `who` → `players` | NNGS 可加篩選條件；M1 回傳全部 |
-| `games` | 進行中的對局列表 | 大廳 `welcome` 的 `rooms` 與 `rooms` 推送 | NNGS 要自己查；M1 主動推送 |
-| `match` | 發出邀請（含設定） | 大廳 `invite{to, settings}` | 見附錄 B |
-| `accept` | 接受邀請 | 大廳 `invite_reply{accept: true}` | NNGS 也可回發相同條件的 `match` 表示接受 |
-| `decline` | 拒絕邀請 | 大廳 `invite_reply{accept: false}` | |
-| `withdraw` | 撤回自己的邀請 | 大廳 `withdraw{invite_id}` | |
-| 座標（例如 `D4`） | 落子 | 房間 `action{type: play, x, y}` | M1 座標從 0 起算 |
-| `pass` | pass | 房間 `action{type: pass}` | |
-| `resign` | 認輸 | 房間 `action{type: resign}` | |
-| `say` | 對手間對話 | 房間 `chat{text}` | |
-| `refresh`、`status` | 重新顯示局面 | 重連時的 `state`；每次動作後的 `state` | M1 不需另外查詢 |
-| 點選死子 | 標記死子 | 房間 `action{type: toggle_group, x, y}` | M1 另有估算器提出的初始判斷 |
-| `undo`（點目階段） | 回到對局 | 房間 `action{type: resume}` | |
-| `done` | 確認點目 | 房間 `action{type: agree, version}` | M1 需指定同意的版本；任一方改動死子會清除同意 |
-| `score` | 預覽目數 | `state.proposal.score` | M1 每次提案都附目數 |
-| `moves` | 查看棋步 | 大廳 `get_record` | |
-| `results` | 對局結果紀錄 | 大廳 `my_games` | NNGS 可查任何人；M1 只查自己 |
-| `quit` | 離開伺服器 | 關閉連線 | |
-| `nuke`（管理） | 把玩家踢下線，對局因斷線而封盤 | 房間服務 gRPC `CloseRoom` | NNGS 沒有直接結束對局的指令；M1 直接把這局記為中止 |
+| 登入時輸入名稱 | `login{name}` | `Gateway.Accept` → `Lobby.Login(name)` → 檢查名稱 → `Session.Send(welcome)` | NNGS 的登入是 telnet 提示；我們是 WebSocket 的第一則訊息 |
+| `who` | `who` | `Lobby.Who()` → 回傳 `players` | NNGS 的篩選參數（例如 `who o`）M1 不做 |
+| `games` | `games` | `Lobby.Games()` → 回傳房間列表 | NNGS 只能查；我們另外在列表變化時主動推送 `rooms` |
+| `match bob B 19 10 10` | `match{to, color, size, komi}` | `Lobby.Match()` → `checkMatch()` → `Invites.Create()` → `Session(to).Send(match_request)` | 時間、讀秒參數 M1 忽略（棋鐘在 M2）；多了 `komi`。邀請 60 秒逾時（NNGS 沒有逾時） |
+| `accept [n]` | `accept{invite_id}` | `Lobby.Accept()` → `RoomClient.CreateRoom()`（gRPC）→ `Tickets.Sign()` × 2 → 雙方 `Send(game_ready)` | **架構差異最大的一步**：NNGS 接受當下就開局；我們要建房、簽入場券，玩家再另外連進房間服務（4.3 節） |
+| `decline [who]` | `decline{invite_id}` | `Lobby.Decline()` → `Invites.End(declined)` → 雙方 `Send(match_result)` | |
+| `withdraw` | `withdraw{invite_id}` | `Lobby.Withdraw()` → `Invites.End(withdrawn)` | |
+| `pending` | `pending` | `Lobby.Pending()` → 回傳自己發出與收到的邀請 | 實作很小，M1 一起做 |
+| `results [user]` | `results` | `Lobby.Results()` → 讀 `lobby.summaries` | M1 只查自己（NNGS 可查任何人） |
+| `moves [game]` | `moves{room_id}` | 進行中：轉給房間服務；已結束：`RoomClient.GetRecord()`（gRPC） | NNGS 的棋步存在伺服器記憶體或檔案；我們的棋譜在房間服務的資料庫，大廳只能用 gRPC 查（D-11） |
+| `quit` | （關閉連線） | `Lobby.Logout()` → 結束他所有的邀請 | |
+| `help`、`alias`、`set`、`toggle` 等文字介面指令 | 不實作 | — | 網頁介面取代 |
 
-### A.2 相關但不在 M1 的
+### A.3 對局指令
+
+| NNGS 指令 | M1 訊息 | 函式呼叫（房間服務 → 規則服務） | 架構差異與做法 |
+| --- | --- | --- | --- |
+| （連進對局） | `enter{ticket}` 或 `enter{reconnect_token}` | `Gateway.Accept` → `Tickets.Verify()` → `Room.Join(seat)` → `Send(reconnect_token, state)` | NNGS 開局時兩人已在同一條連線上；我們要出示入場券，斷線後用重連憑證回來（4.7 節） |
+| 座標（例如 `D4`） | `D4` 的形式：`play{at, base_version}` | `Gateway` 蓋收到時間 → `Room.events <- Action` → `Room.handleAction()` → `RulesClient.Apply()`（gRPC）→ `goban-engine.place()` → `Store.AppendAction()` → `Room.broadcastState()` | NNGS 在同一個程式裡直接改棋盤；我們由規則服務重放判斷、房間先寫棋譜再廣播。多了 `base_version` 防止前端用舊局面下棋（D-14） |
+| `pass` | `pass{base_version}` | 同上；`RulesClient.Apply()` 判斷是否連續兩次 pass | |
+| `resign` | `resign` | `Room.handleAction()` → `RulesClient.Apply()` → `Room.finish()` → `LobbyClient.ReportRoomEvent(room.finished)`（gRPC） | 結束後要回報大廳更新列表與戰績；NNGS 在同一程式內直接處理 |
+| `say` | `say{text}` | `Room.handleSay()` → `Store.AppendAction()` → 送給對手 | |
+| `refresh` | `refresh` | `Room.sendState()` | 每次動作後本來就會推送狀態，這個指令主要給前端手動重整用 |
+| `status` | 不實作 | — | 與 `refresh` 重複 |
+| 點目階段輸入座標 | 同 `play{at, base_version}` | 在 `agreement` 階段，`RulesClient.Apply()` 把座標解讀為切換該塊死活（`toggleSingleGroupRemoval`）→ 新提案 → `Room.clearAgreements()` | 與 NNGS 相同：點目時打座標就是標記死子。差別是**任一方改動都會清除雙方的同意**，而且一開始會先有估算器提出的判斷 |
+| `undo`（點目階段） | `undo` | `agreement` 階段：`RulesClient.Apply(resume)` → 回到 `playing` | NNGS 在點目階段 `undo` 會回到對局；我們沿用。對局中的 `undo`（悔棋）是 M2 |
+| `done` | `done{version}` | `Room.handleDone()` → 記錄同意 → 雙方都同意同一版本 → `RulesClient.Apply(finalize)` → `Room.finish()` | NNGS 兩人都 `done` 就定案；我們要指定同意的版本，避免同意到對方剛改過的判斷 |
+| `score` | `score` | `Room.sendScore()`：回傳目前提案的目數 | 每次提案的 `state` 已附目數，這個指令可選 |
+| `adjourn`、`time`、`undo`（對局中）、`observe`、`kibitz` | M1 不實作 | — | M2 或之後，見 A.4 |
+
+### A.4 M1 不實作的相關指令
 
 | NNGS 指令 | 用途 | 階段 |
 | --- | --- | --- |
-| `pending` | 列出待回覆的邀請 | M2 |
 | `match`（用不同條件回發） | 還價 | M2 |
 | `open` | 是否接受邀請 | M2 |
 | `handicap` | 讓子 | M2 |
@@ -449,10 +466,31 @@ NNGS 1.1.22 的完整指令對照見 [feature-list.md 附錄](feature-list.md#�
 | `observe`、`kibitz`、`all` | 觀戰、講評 | M2 |
 | `sgf`、`mail` | 取得棋譜檔 | 匯出 SGF M2 |
 | `adjourn`、`load`、`stored` | 封盤、續下 | 未來 |
-| `censor` | 封鎖 | M3 |
-| `tell` | 私訊 | M3 |
+| `tell`、`censor`、`stats` | 私訊、封鎖、個人資料 | M3 |
 | `komi` | 對局中改貼目 | 不做（建房時設定） |
 | `tmatch`、`teach`、`pair` | 比賽、研究盤、連棋 | 未來 |
+| `nuke`（管理） | 把玩家踢下線 | M1 以房間服務 gRPC `CloseRoom` 直接中止對局；NNGS 沒有直接結束對局的指令 |
+
+### A.5 與正文的訊息名稱對照
+
+採用本附錄的命名後，正文第 4～5、10 章的訊息依下表改名：
+
+| 正文目前的名稱 | 改為（NNGS 名稱） | 備註 |
+| --- | --- | --- |
+| `hello{name}`（大廳） | `login{name}` | 與房間的 `enter` 區分 |
+| `invite` | `match` | 收到時的訊息改為 `match_request` |
+| `invite_reply{accept: true}` | `accept` | |
+| `invite_reply{accept: false}` | `decline` | |
+| `invite_result` | `match_result` | |
+| `my_games` | `results` | |
+| `get_record` | `moves` | |
+| `hello{ticket}`（房間） | `enter{ticket}` | |
+| `action{type: play, x, y}` | `play{at}` | 座標改為 `D4` 形式 |
+| `action{type: toggle_group}` | `play{at}`（在 `agreement` 階段） | 同一個指令依階段解讀 |
+| `action{type: agree}` | `done{version}` | |
+| `action{type: resume}` | `undo`（在 `agreement` 階段） | |
+| `chat` | `say` | |
+| — | `pending`、`games`、`refresh`、`score` | 新增的查詢指令 |
 
 ## 附錄 B：邀局流程對照（NNGS ↔ M1）
 
