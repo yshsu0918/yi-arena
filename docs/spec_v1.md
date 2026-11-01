@@ -1,6 +1,7 @@
 # 規格 v1
 
 > 整理日期：2026-11-01。狀態：**設計階段，尚未實作**。
+> 本文件是全部功能的規格；**M1 的實作規格見 [spec_v2.md](spec_v2.md)**。
 > 本文件只寫系統「怎麼運作」。每個功能的階段見 [feature-list.md](feature-list.md)，實作順序見 [roadmap.md](roadmap.md)，決定的理由見 [decisions.md](decisions.md)（文中以 D-xx 標註）。
 > 圖與介面中的函式、訊息名稱都是**虛擬碼**。
 
