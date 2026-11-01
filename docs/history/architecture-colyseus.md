@@ -1,9 +1,9 @@
 # 架構草案：Colyseus 版（圍棋第一版）
 
-> **已不採用**（2026-10-31）。目前的架構見 [architecture_v1.md](../architecture_v1.md)，路線見 [roadmap.md](../roadmap.md)。
+> **已不採用**（2026-10-31）。目前的規格見 [spec_v1.md](../spec_v1.md)，路線見 [roadmap.md](../roadmap.md)。
 
 > 整理日期：2026-10-30。狀態：**草案，尚未實作**。
-> 依據：[設計討論紀錄](../design-discussion.md)（第 2～4、8～10 節）與 `poc/colyseus` 分支的結構（`Lobby.ts`、`GameRoom.ts`、`rules.ts`、`db.ts`）。
+> 依據：[設計討論紀錄](design-discussion.md)（第 2～4、8～10 節）與 `poc/colyseus` 分支的結構（`Lobby.ts`、`GameRoom.ts`、`rules.ts`、`db.ts`）。
 > 流程圖中的函式是**虛擬碼**，用來說明誰呼叫誰。Colyseus 的 API 名稱（`matchMaker.createRoom`、`reserveSeatFor`、`consumeSeatReservation`、`allowReconnection`、`presence.publish` 等）以 0.18 版型別定義為準，實作時要再確認。
 
 ## 1. 架構圖
@@ -284,3 +284,23 @@ sequenceDiagram
 - 玩家狀態由誰維護：LobbyRoom 在建房時標成「對局中」，玩家回大廳時改回「空閒」；斷線未回大廳的情況要定規則。
 - `goban-engine` 的資料格式怎麼對應到 `validate`、`apply`、`view`；「完成」的協商是由提議機制處理，還是直接用 `goban-engine` 內建的 stone removal 流程。
 - 觀戰者的加入方式與講評頻道（設計討論第 5.5、6 節），本草案還沒畫。
+
+## 附錄：與規格 v1 的差異
+
+| 項目 | 本草案（Colyseus） | 規格 v1 |
+| --- | --- | --- |
+| 對局在哪裡跑 | Colyseus 的 GameRoom（Node） | 房間服務（Go），每個房間一個 goroutine |
+| 服務數量 | 1 個 Node 程序 | 3 個獨立服務：大廳服務（Go）、房間服務（Go）、規則服務池（Node），服務之間用 gRPC |
+| 建房與座位 | `matchMaker.createRoom` + `reserveSeatFor` | 大廳以 gRPC 呼叫 `CreateRoom`、`ReserveSeat`；座位由房間分配 |
+| 玩家連線 | 一個 Colyseus client，先連大廳再進房 | 兩條 WebSocket：大廳、房間；入場券 + 重連憑證 |
+| 規則在哪裡跑 | 房間程序內直接呼叫 `goban-engine` | 以 gRPC 呼叫規則服務，每次帶完整動作紀錄 |
+| 計時器 | Colyseus 的 `clock.setTimeout` | Go `time.Timer`，觸發時送事件進房間；依收到時間判超時 |
+| 房間列表 | GameRoom 的 metadata 自動推送 | 大廳依房間事件維護列表項並推送；所有對局公開可觀戰 |
+| 觀戰 | 未設計 | 觀戰入場券、講評只給觀戰者、每條連線獨立送出佇列 |
+| 狀態同步 | 同一程序，不需要 | 房間服務 → 大廳服務事件（帶序號）+ 定期對帳 |
+| 重啟影響 | 程序重啟，大廳和對局一起中斷 | 大廳服務、房間服務可分別重啟；停機期間不扣時 |
+| 前端先擺子 | 未設計 | 對局階段先擺子；房間發版本號對帳 |
+| 終局方式 | 雙方手動標記死子，都按完成才定案 | 規則服務自動提出死子判斷，雙方可手動切換死子後同意；談不攏才恢復對局 |
+| 到場時限 | 未設計 | 有 |
+| 用詞 | 房間引擎 | 大廳、房間、規則（見第 0 節） |
+| 遊戲範圍 | 圍棋、五子棋、井字棋 | 圍棋、五子棋（井字棋之後再補） |

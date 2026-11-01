@@ -3,15 +3,16 @@
 > 整理日期：2026-10-30。
 > 內容為 PoC 測試計畫之後的討論整理。NNGS 的部分來自閱讀 NNGS 1.1.22 原始碼與英文說明檔，並於 2026-10-30 實際編譯執行（見 5.6 節）；套件資訊查自 npm，除另有註明外**沒有實際安裝測試**。
 >
-> **注意**：第 10 節「暫定採用 Colyseus」已被取代。目前的路線與架構見 [roadmap.md](roadmap.md) 與 [architecture_v1.md](architecture_v1.md)；本文件其餘的設計（邀局、悔棋、計時、NNGS 參考等）仍是現行設計的依據。
+> **歷史文件**（2026-11-01 移入 history）：本文件是討論過程的原始紀錄。其中仍有效的設計已整理進 [spec_v1.md](../spec_v1.md)，決定與理由整理進 [decisions.md](../decisions.md)；第 10 節「暫定採用 Colyseus」已被取代。
 
 相關文件：
 
-- [路線圖](roadmap.md)
-- [架構 v1](architecture_v1.md)
-- [線上棋類平台研究](history/platform-research.md)（歷史）
-- [PoC 測試計畫](history/poc-test-plan.md)（歷史）
-- [架構草案（Colyseus）](history/architecture-colyseus.md)（歷史，已不採用）
+- [路線圖](../roadmap.md)
+- [規格 v1](../spec_v1.md)
+- [決策紀錄](../decisions.md)
+- [線上棋類平台研究](platform-research.md)（歷史）
+- [PoC 測試計畫](poc-test-plan.md)（歷史）
+- [架構草案（Colyseus）](architecture-colyseus.md)（歷史，已不採用）
 
 ## 1. 方向：先做出來，再回頭比較
 
@@ -306,7 +307,7 @@ NNGS **沒有定時刷新**。伺服器是事件驅動（`network.c` 主迴圈 `
 
 ### 5.6 實測結果（2026-10-30）
 
-實際編譯並執行 NNGS 1.1.22，用腳本模擬 7 位訪客測試。步驟、腳本與完整紀錄見 [`history/nngs-test/`](history/nngs-test/README.md)。
+實際編譯並執行 NNGS 1.1.22，用腳本模擬 7 位訪客測試。步驟、腳本與完整紀錄見 [`nngs-test/`](nngs-test/README.md)。
 
 - **編譯**：mlrate 已找不到下載，改用空殼停用等級分；新版 gcc 要加 `-std=gnu89 -fcommon`；安裝路徑要手動修；SIGTERM 關不掉。
 - **與讀原始碼一致**：約局與還價、輪流檢查、觀戰即時推送、講評只給觀戰者、`say` 只給對手、悔棋由對手直接撤回、約 1 分鐘內自動判超時、SGF 自動存檔（含講評與對話，不含被撤回的棋步）。
@@ -600,7 +601,7 @@ interface Clock {
 
 ## 10. 框架決定：暫定採用 Colyseus（2026-10-30）
 
-> **已被取代**（2026-10-31）：改為自己寫的薄 Go 大廳、Go 房間服務、Node 規則服務，三者以 gRPC 溝通。見 [roadmap.md](roadmap.md)。以下保留當時的比較作為紀錄。
+> **已被取代**（2026-10-31）：改為自己寫的薄 Go 大廳、Go 房間服務、Node 規則服務，三者以 gRPC 溝通。見 [roadmap.md](../roadmap.md)。以下保留當時的比較作為紀錄。
 
 依據 `poc/nakama` 與 `poc/colyseus` 兩個分支的實測（兩者 E2E 19 項、資料庫 14 項皆全數通過），暫定採用 Colyseus。
 
@@ -627,7 +628,7 @@ interface Clock {
 - 0.18 版文件與網路範例多為舊版寫法 → 以套件型別定義為準。
 - 身分驗證要自己做（`onAuth` 驗證 token）。
 
-架構圖與「邀請對局到結束對局」的流程見 [舊版草案](history/architecture-colyseus.md)。
+架構圖與「邀請對局到結束對局」的流程見 [舊版草案](architecture-colyseus.md)。
 
 ## 11. 待辦
 
@@ -637,7 +638,7 @@ interface Clock {
 - [ ] 計時模組：依 9.7 節做成獨立模組，用注入時間的單元測試覆蓋各種計時方式與超時情境。
 - [ ] 圍棋第一版：約局、終局點目、讓子貼目、讀秒、封盤續下、悔棋。
 - [ ] 實際安裝 `goban-engine`，在 Node.js 上用一盤棋驗證提子、打劫、標記死子與數子結果，並設計規則模組介面如何包住它。
-- [ ] 依 [舊版草案](history/architecture-colyseus.md) 把 Colyseus 分支的房間引擎改成通用版（動作類型、階段、依玩家過濾畫面、重放）。
+- [ ] 依 [舊版草案](architecture-colyseus.md) 把 Colyseus 分支的房間引擎改成通用版（動作類型、階段、依玩家過濾畫面、重放）。
 - [ ] 定義第一個里程碑：圍棋 9 路與 19 路、開放座位加邀局、手動點目、數子法結算、保存對局紀錄；讀秒與悔棋放第二階段。
 - [ ] PoC 結果表記錄三個框架的房間列表更新方式（推送或輪詢）。
 - [ ] 選配：PoC 加一個邀局步驟（P5 邀請 P1 下 9 路圍棋，接受後直接開局）。

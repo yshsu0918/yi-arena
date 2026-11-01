@@ -1,6 +1,8 @@
 # 文件調整規劃
 
-> 2026-11-01。狀態：**規劃，尚未執行**。
+> 2026-11-01。狀態：**已執行**（2026-11-01）。結果：[spec_v1.md](../spec_v1.md)、[decisions.md](../decisions.md)、[feature-list.md](../feature-list.md)、[roadmap.md](../roadmap.md)。
+>
+> 待確認事項的答覆：規格文件改名為 `spec_v1.md`；設計討論紀錄移到 `history/` 保留原貌；「未來」功能在功能列表中標示難度。
 
 ## 1. 要解決的問題
 
