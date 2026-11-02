@@ -1,19 +1,20 @@
-# 規格 v2：里程碑 1（能完整下一盤圍棋與五子棋）
+# 規格 v2：里程碑 1（對局功能與 NNGS 對齊）
 
 > 整理日期：2026-11-02。狀態：**M1 的實作規格**。
 > 只涵蓋 M1。完整的功能規劃見 [spec_v1.md](spec_v1.md)，階段見 [feature-list.md](feature-list.md)，理由見 [decisions.md](decisions.md)（文中以 D-xx 標註）。
 > 訊息以 JSON 描述欄位；實際的 proto 定義在 `proto/`，以本文件為準。
+> 2026-11-02 起只分兩個里程碑（D-31）：原本的 M2（對齊 NNGS 的對局功能、簡易註冊）併入 M1，原本的 M3 改稱 M2。核心部分（第 1～11 章）已寫完；併入的功能列在第 12 章「待補規格」，之後逐章補上。登入改用簡易註冊，不設訪客（D-30）。
 > **指令名稱沿用 NNGS**（D-22），對照見附錄 A；**一位玩家可以同時在多個房間對局**（D-21）；**M1 同時支援圍棋與五子棋**（D-23）。
 > 2026-11-02 依「遊戲知識只放在規則服務」調整三個服務的分工（D-27）：大廳不驗證遊戲設定、房間不解析座標與提案、座位改用 `1`／`2`。
 > 2026-11-01 參考 NNGS 1.1.22 原始碼的做法補齊疏漏（斷線、終局確認、版本號等），對照見附錄 C。
 
 ## 1. 範圍
 
-**M1 要做到**：訪客在大廳約局，進房下完 9 路或 19 路圍棋（雙方確認死子與目數後定案），或 15 路五子棋（連成五子即結束），結果與棋譜保存下來。一位玩家可以同時進行多盤對局。五子棋用來證明平台不改程式就能跑第二種遊戲（D-10、D-23）。
+**M1 要做到**：NNGS 有的對局功能都要有（D-28）。核心是：玩家註冊登入後在大廳約局，進房下完 9 路或 19 路圍棋（雙方確認死子與目數後定案），或 15 路五子棋（連成五子即結束），結果與棋譜保存下來。一位玩家可以同時進行多盤對局。五子棋用來證明平台不改程式就能跑第二種遊戲（D-10、D-23）。
 
-**M1 包含**
+**M1 包含：核心（本文件第 1～11 章）**
 
-- 訪客登入、玩家列表（`who`）、房間列表（`games` 與推送）
+- 簡易註冊與登入（D-30，不設訪客）、玩家列表（`who`）、房間列表（`games` 與推送）
 - 約局：`match`（含設定）、`accept`、`decline`、`withdraw`、`pending`、逾時
 - 同時參與多個房間（多盤對局）
 - 建房、入場券、重連憑證、從大廳回到對局（`rejoin`）
@@ -24,7 +25,11 @@
 - 棋譜記錄、`moves`、`results`
 - 強制關房（管理用）
 
-**M1 不包含**：棋鐘、悔棋（對局中的 `undo`）、觀戰與講評、開放房間、還價、`open` 開關、讓子、五子棋的連珠規則（禁手）、帳號登入、私訊與好友、大廳聊天、匯出 SGF。
+**M1 包含：與 NNGS 對齊（第 12 章，規格待補）**
+
+棋鐘（加拿大與日式讀秒）、暫停、送時間、還價、`open` 開關、忙碌訊息、讓子、開放房間、悔棋、對局中改貼目、對局標題、觀戰（講評、觀戰者列表、同時看多局）、封盤續下、匯出 SGF、覆盤、研究盤、保留座位倒數、伺服器資訊、公告、基本管理。
+
+**M1 不包含**（M2 或之後）：好友、私訊、離線訊息、封鎖、大廳聊天、聊天頻道、等級分與排行榜、天梯、第三方登入、個人資料與查詢玩家；聯棋、比賽、死活題；五子棋的連珠規則（禁手）；日本規則。
 
 ## 2. 系統組成
 
@@ -33,7 +38,8 @@
 | 大廳服務 | Go | WebSocket（前端） | gRPC 伺服器（接收房間事件）；gRPC 客戶端（呼叫房間服務；呼叫規則服務驗證設定） |
 | 房間服務 | Go | WebSocket（前端） | gRPC 伺服器（接收大廳呼叫）；gRPC 客戶端（呼叫大廳、規則服務） |
 | 規則服務 | Node.js | — | gRPC 伺服器（接收房間的 `Apply`、大廳的 `ValidateSettings`） |
-| PostgreSQL | — | — | 兩個資料庫：`lobby`、`rooms`，各自的帳號 |
+| 身分服務（簡易註冊） | Go | HTTP（前端：註冊、登入、改密碼） | 提供驗證 token 用的公鑰（D-30） |
+| PostgreSQL | — | — | 三個資料庫：`lobby`、`rooms`、`auth`，各自的帳號 |
 
 **資料流向**（每條線上是傳的資料；→ 是箭頭起點送往終點，← 是回傳）：
 
@@ -46,6 +52,7 @@ flowchart LR
   L["大廳服務（Go）"]
   R["房間服務（Go）"]
   S["規則服務（Node，無狀態）"]
+  A["身分服務（簡易註冊）"]
   LDB[("lobby 資料庫<br/>戰績摘要")]
   RDB[("rooms 資料庫<br/>棋譜、待送事件")]
 
@@ -54,12 +61,15 @@ flowchart LR
   L <-- "→ CreateRoom、GetRecord、ListRooms、CloseRoom<br/>← 房間事件：started、finished（摘要）、cancelled、closed" --> R
   R <-- "→ 設定 + 動作紀錄 + 新動作<br/>← 合不合法、局面、階段、提案、結果" --> S
   L -- "ValidateSettings（檢查設定、補預設值）" --> S
+  FL <-- "→ register、login<br/>← token（含 user_id）" --> A
+  L -- "取得驗證 token 的公鑰" --> A
   L --> LDB
   R --> RDB
 ```
 
 - **棋譜只在房間服務**：大廳要看棋譜得用 `GetRecord` 問房間；大廳自己只存戰績摘要（D-11）。
 - **規則服務不存任何資料**：每次由房間帶完整的動作紀錄來重放（D-05）。
+- **先登入再進大廳**：前端向身分服務登入取得 token，連大廳時出示；大廳只用公鑰驗證，不碰密碼（D-30）。
 - **前端同時連兩個服務**：大廳畫面連大廳（約局），對局畫面直接連房間（下棋），兩條 WebSocket。
 - **前端連房間要靠大廳發的入場券**：大廳與房間之間不同步玩家連線，只靠入場券與房間事件。
 - 大廳與房間只透過 gRPC 溝通，不共用資料庫（D-01）。
@@ -76,6 +86,7 @@ flowchart LR
 | 房間 WebSocket | 8932 |
 | 房間 gRPC | 8933 |
 | 規則 gRPC | 8934 |
+| 身分服務 HTTP | 8935 |
 | PostgreSQL | 5445 |
 
 **伺服器設定**（環境變數，括號內為預設值）：
@@ -87,6 +98,8 @@ flowchart LR
 | `MATCH_TTL`：邀請逾時 | 60 秒 |
 | `HEARTBEAT`：WebSocket ping 間隔；連續 2 次沒有回應即視為斷線 | 20 秒 |
 | `TICKET_SECRET`：入場券簽章密鑰 | （必填） |
+| `AUTH_ISSUER`、`AUTH_JWKS_URL`：大廳驗證 token 用的簽發者與公鑰位置 | 身分服務的位址 |
+| `TOKEN_TTL`：登入 token 有效期（身分服務） | 7 天 |
 | `ESTIMATOR`：死子估算器 `on`／`off`（只有規則服務讀取） | `on` |
 | `MOVE_IDLE_LIMIT`：`playing` 階段輪到的人多久沒動作就判負 | 15 分鐘 |
 | `AGREEMENT_ROUND_LIMIT`：每一輪點目的上限，切換死子不會重設 | 3 分鐘 |
@@ -124,7 +137,8 @@ M1 規則服務接受的設定：
 
 | 欄位 | 說明 |
 | --- | --- |
-| `name` | 訪客名稱：英數字與底線，1～20 字元。**比對不分大小寫**（`Alice` 與 `alice` 是同一個名稱，與 NNGS 相同），顯示時保留登入時的寫法 |
+| `user_id` | 帳號的不變 ID（UUID），由身分服務產生；大廳、房間、棋譜都以它認人 |
+| `name` | 顯示名稱：註冊時決定，英數字與底線，1～20 字元。**不分大小寫唯一**（`Alice` 與 `alice` 是同一個名稱，與 NNGS 相同），顯示時保留註冊時的寫法 |
 | `games` | 正在對局的 `room_id` 列表（0～`MAX_GAMES_PER_PLAYER` 個） |
 
 ### 3.4 邀請 `Match`
@@ -143,7 +157,7 @@ M1 規則服務接受的設定：
 | --- | --- |
 | `room_id` | |
 | `settings` | 完整的 `Settings`（含 `game`）；前端依遊戲決定怎麼顯示 |
-| `players` | `[{seat, name}]`，座位 `1` 是發出邀請者、`2` 是被邀請者 |
+| `players` | `[{seat, user_id, name}]`，座位 `1` 是發出邀請者、`2` 是被邀請者 |
 | `status` | `waiting`（等待棋手到場）、`playing`、`finished` |
 
 ### 3.6 局面 `View`（由規則服務產生，房間原樣轉送）
@@ -189,7 +203,7 @@ M1 規則服務接受的設定：
 | --- | --- |
 | `room_id` | 也是棋譜 ID |
 | `settings` | 完整的 `Settings` |
-| `players` | `[{seat, name}]` |
+| `players` | `[{seat, user_id, name}]`；`name` 是對局當時的名稱 |
 | `result` | `Result` |
 | `started_at`、`ended_at` | 開局與結束時間；沒開局就取消的局不會有 `Summary` |
 
@@ -213,11 +227,11 @@ M1 規則服務接受的設定：
 
 ### 4.1 登入與大廳
 
-1. 前端連上大廳，第一則訊息送 `login{name}`。
-2. 名稱不合法 → `error{invalid_name}` 並斷線。
-3. 名稱已經有大廳連線 → **踢掉舊連線**（舊連線收到 `error{logged_in_elsewhere}` 後斷線），新連線登入成功；與 NNGS 對註冊帳號的做法相同。M1 是測試階段，不防止別人冒用名稱；身分驗證等 M3 的註冊系統（D-24）。
+1. 玩家先在身分服務註冊、登入（4.11 節），取得 token。
+2. 前端連上大廳，第一則訊息送 `login{token}`。大廳用身分服務的公鑰驗證簽章與到期時間，取出 `user_id`、`name`、`role`；無效或過期 → `error{invalid_token}` 並斷線。
+3. 同一個帳號可以同時開多個分頁、多台裝置，各自是一條大廳連線，不互踢。
 4. 成功 → `welcome{you, players, rooms, games}`，其中 `games` 是自己正在進行的房間（重新登入時用來回到對局）。
-   - **`games` 的來源**：大廳以房間列表為準，列出 `players` 有這個名稱（不分大小寫）、且 `status` 為 `waiting` 或 `playing` 的房間。所以玩家離線再登入、或建房完成時他不在線，`games` 都不會遺失；它不綁在大廳連線上。對局數上限（4.2 節）與 `rejoin`（4.7 節）用同一個來源。
+   - **`games` 的來源**：大廳以房間列表為準，列出 `players` 有這個 `user_id`、且 `status` 為 `waiting` 或 `playing` 的房間。所以玩家離線再登入、或建房完成時他不在線，`games` 都不會遺失；它不綁在大廳連線上。對局數上限（4.2 節）與 `rejoin`（4.7 節）用同一個來源。
 5. 玩家列表**不推送**（D-09）；前端送 `who` 取得 `players`。
 6. 房間列表：送 `games` 取得完整列表；房間新增、狀態變更、移除時，大廳主動推送 `rooms{op, room}` 給**所有連著大廳的玩家**（對局中的玩家也收得到，是否顯示由前端決定）。
 7. 玩家與大廳斷線：他送出與收到的待回覆邀請都結束（`cancelled`），與 NNGS 相同；他進行中的對局不受影響（對局在房間服務，另有連線）。
@@ -499,10 +513,10 @@ stateDiagram-v2
 
 **新分頁或其他裝置**（沒有重連憑證）：
 
-1. 玩家用同一個名稱 `login` 大廳，舊的大廳連線被踢掉（4.1 節）；`welcome.games` 列出他進行中的房間。
+1. 玩家用同一個帳號登入（新分頁可直接用瀏覽器裡的 token），`welcome.games` 列出他進行中的房間。
 2. 送 `rejoin{room_id}` → 大廳確認這個房間在他的 `games` 裡（4.1 節：`waiting` 或 `playing`；已結束的局改用 `moves` 查棋譜），否則 `not_your_game`；確認後重新簽發入場券，送 `game_ready`；之後同 4.3 節第 4 步。舊分頁在這個房間的連線被踢掉（4.3 節第 6 步）。
 
-M1 以名稱識別玩家，不保留名稱、不驗證身分（測試階段）；M3 有註冊系統後再處理（D-24）。
+換裝置也一樣：在另一台裝置登入同一個帳號，再 `rejoin`。
 
 ### 4.8 棋譜與戰績
 
@@ -516,7 +530,7 @@ M1 以名稱識別玩家，不保留名稱、不驗證身分（測試階段）�
 
 | 憑證 | 簽發者 | 格式與內容 | 有效期 |
 | --- | --- | --- | --- |
-| 棋手入場券 | 大廳 | 以 `TICKET_SECRET` 做 HMAC-SHA256 簽章；內容 `room_id, name, seat (1/2), jti, exp` | 60 秒，只能用一次 |
+| 棋手入場券 | 大廳 | 以 `TICKET_SECRET` 做 HMAC-SHA256 簽章；內容 `room_id, user_id, name, seat (1/2), jti, exp` | 60 秒，只能用一次 |
 | 重連憑證 | 房間 | 128 位元隨機字串，存在房間的座位資料中，不簽章 | 到房間關閉；每次重連成功即換發，舊的作廢 |
 
 - 閘道記住已使用的 `jti`，到入場券過期為止。
@@ -529,6 +543,24 @@ M1 以名稱識別玩家，不保留名稱、不驗證身分（測試階段）�
 - `playing`、`agreement` 的房間：記為中止（`detail: admin`），送 `game_over` 給在線棋手，回報 `room.finished` 與 `room.closed`。
 - `finished` 的房間：直接關閉，回報 `room.closed`。
 
+### 4.11 簡易註冊與登入（身分服務）
+
+設計理由與之後換成正式身分服務的做法見 D-30。
+
+| 方法 | 內容 | 說明 |
+| --- | --- | --- |
+| `POST /register` | `{name, password}` → `{user_id}` | 名稱規則見 3.3 節；密碼至少 8 字元；名稱已被註冊 → `name_taken` |
+| `POST /login` | `{name, password}` → `{token, expires_at}` | 名稱或密碼錯誤 → `wrong_password`；token 有效 `TOKEN_TTL`（7 天），過期重新登入 |
+| `POST /password` | `{old, new}`（帶 token） | 改密碼 |
+| `GET /.well-known/jwks.json` | — | 驗證 token 用的公鑰，大廳啟動時取得並定期更新 |
+| 管理員命令列 | — | 重設密碼、停用帳號、設定管理員 |
+
+- **token**：JWT，非對稱金鑰簽章；內容 `iss`、`sub`（`user_id`）、`name`、`role`（`player`／`admin`）、`iat`、`exp`。大廳只有公鑰，驗證得了、簽發不了。
+- **資料表** `auth.users`：`user_id`、`name`、`name_lower`（唯一）、`password_hash`（argon2id）、`role`、`disabled`、`created_at`。
+- **次數限制**：同一名稱加 IP 每分鐘最多嘗試登入 5 次；同一 IP 每小時最多註冊 5 個帳號；超過 → `rate_limited`。
+- **不做**：email 驗證、自助忘記密碼、第三方登入、兩步驟驗證、驗證碼（M2 換成正式的身分服務時再處理）。
+- 前端把 token 存在 localStorage（簡易版的做法）。
+
 ## 5. 介面
 
 每則訊息：`{"type": "...", "data": {...}}`。
@@ -537,7 +569,7 @@ M1 以名稱識別玩家，不保留名稱、不驗證身分（測試階段）�
 
 | 方向 | `type` | `data` |
 | --- | --- | --- |
-| → 大廳 | `login` | `{name}` |
+| → 大廳 | `login` | `{token}` |
 | → 大廳 | `who` | — |
 | → 大廳 | `games` | — |
 | → 大廳 | `match` | `{to, settings}` |
@@ -548,7 +580,7 @@ M1 以名稱識別玩家，不保留名稱、不驗證身分（測試階段）�
 | → 大廳 | `rejoin` | `{room_id}` |
 | → 大廳 | `results` | — |
 | → 大廳 | `moves` | `{room_id}` |
-| ← 大廳 | `welcome` | `{you, players: [Player], rooms: [RoomItem], games: [room_id]}` |
+| ← 大廳 | `welcome` | `{you: Player, players: [Player], rooms: [RoomItem], games: [room_id]}` |
 | ← 大廳 | `players` | `{players: [Player]}` |
 | ← 大廳 | `rooms` | `{op: add/update/remove, room: RoomItem}`（推送）或 `{rooms: [RoomItem]}`（回應 `games`） |
 | ← 大廳 | `match_request` | `Match`（給被邀請者） |
@@ -704,7 +736,7 @@ stateDiagram-v2
 
 | 資料表 | 欄位 |
 | --- | --- |
-| `games` | `room_id`、`settings`（JSON）、`players`（JSON：`[{seat, name}]`）、`status`、`result`（JSON）、`adjudicated`（布林，供後台複查）、`rules_version`、`created_at`、`started_at`、`ended_at`、`closed_at` |
+| `games` | `room_id`、`settings`（JSON）、`players`（JSON：`[{seat, user_id, name}]`）、`status`、`result`（JSON）、`adjudicated`（布林，供後台複查）、`rules_version`、`created_at`、`started_at`、`ended_at`、`closed_at` |
 | `actions` | `room_id`、`seq`、`type`、`seat`、`data`（JSON：座標、提案、版本、對話內容）、`received_at` |
 | `outbox` | `room_id`、`seq`、`type`、`payload`（JSON）、`created_at`；送給大廳的事件，大廳確認後刪除（5.4 節） |
 
@@ -718,9 +750,9 @@ stateDiagram-v2
 
 | 資料表 | 欄位 |
 | --- | --- |
-| `summaries` | `player`、`room_id`、`game`、`settings`（JSON）、`seat`、`opponent`、`outcome`（`win`、`loss`、`draw`、`void`）、`reason`、`result`（`Result.text`）、`ended_at` |
+| `summaries` | `user_id`、`room_id`、`game`、`settings`（JSON）、`seat`、`opponent`、`outcome`（`win`、`loss`、`draw`、`void`）、`reason`、`result`（`Result.text`）、`ended_at` |
 
-- `Summary`（`room.finished` 的 payload）：`room_id, settings, players: [{seat, name}], result: Result, started_at, ended_at`；大廳拆成雙方各一筆，`outcome` 由 `Result.winner` 與自己的座位算出（大廳不需要知道顏色）。
+- `Summary`（`room.finished` 的 payload）：`room_id, settings, players: [{seat, user_id, name}], result: Result, started_at, ended_at`；大廳拆成雙方各一筆，`outcome` 由 `Result.winner` 與自己的座位算出（大廳不需要知道顏色）。
 - `(player, room_id)` 唯一，重送的事件不會產生重複資料。
 
 ## 9. 故障處理
@@ -732,7 +764,8 @@ stateDiagram-v2
 | 規則服務無法連線（大廳） | `match` 回 `error{rules_unavailable}`，邀請不建立 |
 | 規則服務逾時或錯誤 | 指令不算數，回 `error{rules_unavailable}`；棋手可以重送 |
 | 房間服務重啟 | 進行中的局中止（M1 不還原）。房間服務啟動時，對所有還沒 `closed` 的房間：`waiting` → 取消，寫入 `room.cancelled`、`room.closed`；`playing`／`agreement` → 中止（`detail: restart`），寫入 `room.finished`、`room.closed`；`finished`（重啟前已結束、還在 60 秒倒數）→ 直接關閉，寫入 `room.closed`。都寫進 `outbox` 照常回報大廳（戰績不會遺失），之後送出 `outbox` 中尚未送出的事件 |
-| 大廳服務重啟 | 對局不受影響；玩家重新 `login`；大廳以 `ListRooms` 重建房間列表，玩家的 `games` 只取 `waiting`、`playing` 的房間（5.4 節） |
+| 身分服務無法連線 | 已登入的人不受影響（大廳用已取得的公鑰驗證）；新的註冊與登入失敗，前端提示稍後再試 |
+| 大廳服務重啟 | 對局不受影響；玩家重新 `login`（token 仍有效）；大廳以 `ListRooms` 重建房間列表，玩家的 `games` 只取 `waiting`、`playing` 的房間（5.4 節） |
 | 房間事件送不出去 | 存在 `outbox`，一直重試到大廳確認（5.4 節）；列表另以對帳修正 |
 | 送出佇列滿（連線太慢） | 斷開該連線；棋手用重連憑證回到所有房間 |
 | 心跳沒有回應 | 視為斷線（4.6 節），關閉連線 |
@@ -741,8 +774,9 @@ stateDiagram-v2
 
 | 代碼 | 來源 | 意思 |
 | --- | --- | --- |
-| `invalid_name` | 大廳 | 登入名稱不合法 |
-| `logged_in_elsewhere` | 大廳 | 同一個名稱在別處登入，這條連線被踢掉 |
+| `invalid_name`、`name_taken`、`weak_password` | 身分服務 | 註冊時名稱不合法、已被註冊、密碼太短 |
+| `wrong_password`、`rate_limited` | 身分服務 | 名稱或密碼錯誤；嘗試太多次 |
+| `invalid_token` | 大廳 | 登入 token 無效、過期或帳號已停用 |
 | `invalid_settings` | 大廳（由規則服務判斷） | 對局設定不合法 |
 | `no_such_player` | 大廳 | 對方不在線 |
 | `invalid` | 大廳 | 邀請自己 |
@@ -780,7 +814,8 @@ stateDiagram-v2
 - [ ] `ESTIMATOR=off` 時，終局流程仍可完成（手動點死子）。
 - [ ] `resign` 可以在 `playing` 與 `agreement` 結束對局。
 - [ ] 重新整理頁面，用重連憑證回到所有進行中的房間；舊的重連憑證失效。
-- [ ] 開新分頁，以同名 `login` 後用 `rejoin` 回到對局，舊分頁的大廳連線與房間連線被踢掉；名稱大小寫不同也算同一個。
+- [ ] 註冊、登入、改密碼可用；名稱大小寫不同視為同一個，不能重複註冊；token 過期或帳號停用後無法登入大廳。
+- [ ] 開新分頁或換裝置，用同一個帳號登入後 `rejoin` 回到對局，舊分頁在該房間的連線被踢掉（同一座位只留一條連線）；大廳連線可以同時有多條。
 - [ ] `CreateRoom` 失敗時，被邀請者收到帶 `match_id` 的 `room_unavailable`，邀請仍可再 `accept`；兩個邀請同時建房不會超過對局上限。
 - [ ] 一方送 `done` 後，另一方用原本的版本送 `done` 仍然成功；對方切換死子後才送的舊版本 `done` 回 `stale_version`。
 - [ ] 點目時一方斷線，確認時限到期不會定案；他重連後確認時限重新計算。
@@ -800,6 +835,23 @@ stateDiagram-v2
 - [ ] 同樣的 `actions` 重放兩次，規則服務回傳完全相同的結果（包括 `random` 執色）。
 - [ ] `CreateRoom` 用同一個 `room_id` 重送兩次，只建一間房。
 
+## 12. 待補規格（M1 第二段：與 NNGS 對齊）
+
+以下功能已確定在 M1（D-28、D-31），詳細規格之後逐章補進本文件，格式比照第 4 章（流程、狀態機、時限、錯誤代碼、驗收條件）。在補上之前，參考 spec_v1 的對應章節。
+
+| 預定章節 | 功能 | NNGS 指令 | 參考 |
+| --- | --- | --- | --- |
+| 提議與同意 | 通用的 `offer{type}` 與回應；悔棋、暫停、改貼目、封盤、和棋共用 | — | 本章新增 |
+| 棋鐘 | 加拿大讀秒、日式讀秒、延遲補償、依收到時間判超時、查詢剩餘時間；暫停與恢復、送時間 | `match` 時間參數、`time`、`pause`、`unpause`、`addtime`、`moretime` | [spec_v1 3.6](spec_v1.md#36-時限與棋鐘)、[5.3](spec_v1.md#53-超時判定) |
+| 約局補充 | 還價、`open` 開關、忙碌訊息、讓子 | `match`、`open`、`set busy`、`handicap` | [spec_v1 3.2](spec_v1.md#32-約局) |
+| 開放房間 | `seek`、`join`、搶座位、房主等待時限 | — | [spec_v1 3.9](spec_v1.md#39-開放房間) |
+| 悔棋與改貼目 | 走提議流程 | `undo`、`komi` | [spec_v1 3.7](spec_v1.md#37-悔棋) |
+| 觀戰 | 觀戰入場券、觀戰者身分、講評只給觀戰者、觀戰者列表、同時看多局 | `observe`、`unobserve`、`kibitz`、`all`、`watching` | [spec_v1 3.8](spec_v1.md#38-觀戰與講評) |
+| 封盤續下 | 封盤、查詢與預覽、續下時用動作紀錄還原、封盤中認輸；房間服務重啟改用同一機制還原 | `adjourn`、`load`、`stored`、`look`、`sresign` | — |
+| 棋譜工具 | 匯出 SGF、網頁覆盤、研究盤（一人擺雙方） | `sgf`、`review`、`teach` | [spec_v1 3.10](spec_v1.md#310-棋譜與戰績) |
+| 斷線補充 | 保留座位倒數、斷線期間的計時 | — | [spec_v1 3.3](spec_v1.md#33-入房與重連) |
+| 大廳與管理 | 對局標題、伺服器資訊、公告；禁言、踢人、封 IP、管理員查詢（以 `user_id` 與 IP） | `title`、`uptime`、`news`、`announce`、`muzzle`、`nuke`、`aban`、`chkip` | — |
+
 ## 附錄 A：NNGS 指令對照與函式呼叫（M1）
 
 NNGS 1.1.22 的完整指令對照見 [feature-list.md 附錄](feature-list.md#附錄nngs-指令對照)。本附錄只列 M1 範圍。
@@ -817,10 +869,10 @@ NNGS 1.1.22 的完整指令對照見 [feature-list.md 附錄](feature-list.md#�
 
 | NNGS 指令 | M1 指令 | 函式呼叫（大廳服務） | 架構差異與做法 |
 | --- | --- | --- | --- |
-| 登入時輸入名稱 | `login{name}` | `Gateway.Accept` → `Lobby.Login(name)` → 檢查名稱 → 同名有舊連線則 `Session.Kick()` → `Session.Send(welcome)` | NNGS 的登入是 telnet 提示；我們是 WebSocket 的第一則訊息。同名重複登入照 NNGS 對註冊帳號的做法踢掉舊的（M1 不驗證身分） |
+| `register`、登入時輸入名稱與密碼 | 身分服務 `/register`、`/login`，再 `login{token}` | `Gateway.Accept` → `Lobby.Login(token)` → `Tokens.Verify()`（公鑰）→ `Session.Send(welcome)` | NNGS 的登入是 telnet 提示，同名重複登入會踢掉舊的；我們先向身分服務登入拿 token，再以 WebSocket 第一則訊息出示；同一個帳號可以同時多條連線（D-30） |
 | `who` | `who` | `Lobby.Who()` → 回傳 `players` | NNGS 的篩選參數（例如 `who o`）M1 不做 |
 | `games` | `games` | `Lobby.Games()` → 回傳房間列表 | NNGS 只能查；我們另外在列表變化時主動推送 `rooms` |
-| `match bob B 19 10 10` | `match{to, settings}` | `Lobby.Match()` → `RulesClient.ValidateSettings()`（gRPC）→ `checkMatch()` → `Matches.Create()` → `Session(to).Send(match_request)` | 時間、讀秒參數 M1 不支援（棋鐘在 M2）；多了 `komi`。邀請會逾時（NNGS 沒有逾時） |
+| `match bob B 19 10 10` | `match{to, settings}` | `Lobby.Match()` → `RulesClient.ValidateSettings()`（gRPC）→ `checkMatch()` → `Matches.Create()` → `Session(to).Send(match_request)` | 時間、讀秒參數在 M1 第二段（棋鐘）；核心先不支援；多了 `komi`。邀請會逾時（NNGS 沒有逾時） |
 | `accept [n]` | `accept{match_id}` | `Lobby.Accept()` → 再檢查對局數 → `RoomClient.CreateRoom()`（gRPC）→ `Tickets.Sign()` × 2 → 雙方 `Send(game_ready)` | **架構差異最大的一步**：NNGS 接受當下就開局；我們要建房、簽入場券，玩家再另外連進房間服務（4.3 節） |
 | `decline [who]` | `decline{match_id}` | `Lobby.Decline()` → `Matches.End(declined)` → 雙方 `Send(match_result)` | |
 | `withdraw` | `withdraw{match_id}` | `Lobby.Withdraw()` → `Matches.End(withdrawn)` | |
@@ -843,27 +895,30 @@ NNGS 1.1.22 的完整指令對照見 [feature-list.md 附錄](feature-list.md#�
 | `refresh` | `refresh{room_id}` | `Room.sendState()` | 每次指令後本來就會推送狀態 |
 | `status` | 不實作 | — | 與 `refresh` 重複 |
 | 點目階段輸入座標 | `play{room_id, at, base_version}` | 在 `agreement` 階段，`RulesClient.Apply()` 解讀為切換死活（`toggleSingleGroupRemoval`）→ 新提案 → `Room.clearDone()` | 與 NNGS 相同；差別是**任一方改動都會清除雙方的 `done`**，而且一開始會有估算器提出的判斷 |
-| `undo`（點目階段） | `undo{room_id}` | 房間原樣轉送：`RulesClient.Apply(undo)` → 規則服務在 `agreement` 階段解讀為回到 `playing` | **與 NNGS 不同**：NNGS 會撤回最後一個 `pass`（第二個 pass 的人重下，而且他再 pass 一次就直接回到點目）；我們照 D-07，兩個 pass 都保留、照正常輪次由下一位下，要再連續兩次 pass 才回到點目。對局中的 `undo`（悔棋）是 M2 |
+| `undo`（點目階段） | `undo{room_id}` | 房間原樣轉送：`RulesClient.Apply(undo)` → 規則服務在 `agreement` 階段解讀為回到 `playing` | **與 NNGS 不同**：NNGS 會撤回最後一個 `pass`（第二個 pass 的人重下，而且他再 pass 一次就直接回到點目）；我們照 D-07，兩個 pass 都保留、照正常輪次由下一位下，要再連續兩次 pass 才回到點目。對局中的 `undo`（悔棋）在 M1 第二段 |
 | `done` | `done{room_id, version}` | `Room.handleDone()` → 記錄同意 → 雙方都同意同一版本 → `RulesClient.Apply(finalize)` → `Room.finish()` | NNGS 兩人都 `done` 就定案，任一方移除死子都清除雙方的 `done`（與我們相同）；我們另外要指定版本，避免同意到對方剛改過的判斷。NNGS 沒有確認時限；我們有，但不替斷線的人同意（D-25） |
 | `score` | `score{room_id}` | `Room.sendProposal()` | 房間重送目前的提案，不解讀內容；每次提案的 `state` 已附目數 |
 | — | `leave{room_id}` | `Room.Leave()` | NNGS 沒有；我們的房間在局結束後保留 60 秒，可提前離開 |
 
-### A.4 M1 不實作的相關指令
+### A.4 M1 第二段才實作、或不在 M1 的相關指令
 
 | NNGS 指令 | 用途 | 階段 |
 | --- | --- | --- |
-| `match`（用不同條件回發） | 還價 | M2 |
-| `open` | 是否接受邀請 | M2 |
-| `handicap` | 讓子 | M2 |
-| `time`、`pause`、`unpause`、`addtime` | 計時 | 棋鐘 M2；暫停、加時未來 |
-| `undo`（對局中） | 悔棋 | M2 |
-| `observe`、`kibitz`、`all` | 觀戰、講評（可邊下邊看，不能觀戰自己的對局） | M2 |
-| `sgf`、`mail` | 取得棋譜檔 | 匯出 SGF M2 |
-| `adjourn`、`load`、`stored` | 封盤、續下 | 未來 |
-| `tell`、`censor`、`stats` | 私訊、封鎖、個人資料 | M3 |
-| `komi` | 對局中改貼目 | 不做（建房時設定） |
-| `tmatch`、`teach`、`pair` | 比賽、研究盤、連棋 | 未來 |
-| `nuke`（管理） | 把玩家踢下線 | M1 以房間服務 gRPC `CloseRoom` 直接中止對局；NNGS 沒有直接結束對局的指令 |
+| `match`（用不同條件回發） | 還價 | M1 第二段 |
+| `open`、`set busy` | 是否接受邀請、忙碌訊息 | M1 第二段 |
+| `handicap` | 讓子 | M1 第二段 |
+| `time`、`pause`、`unpause`、`addtime`、`moretime` | 計時 | M1 第二段 |
+| `undo`（對局中） | 悔棋 | M1 第二段 |
+| `komi` | 對局中改貼目 | M1 第二段 |
+| `observe`、`unobserve`、`kibitz`、`all`、`watching` | 觀戰、講評（可邊下邊看，不能觀戰自己的對局） | M1 第二段 |
+| `adjourn`、`load`、`stored`、`look`、`sresign` | 封盤、續下 | M1 第二段 |
+| `sgf`、`review`、`teach` | 匯出 SGF、覆盤、研究盤 | M1 第二段 |
+| `title`、`event`、`uptime`、`news` | 對局標題、伺服器資訊、公告 | M1 第二段 |
+| `mail` | 寄棋譜 | 不做（改網頁下載） |
+| `tell`、`censor`、`stats`、`notify`、`shout` | 私訊、封鎖、個人資料、好友通知、大廳聊天 | M2 |
+| `rating`、`rank`、`ladder` | 等級分、天梯 | M2 |
+| `tmatch`、`pair`、`problem` | 比賽、聯棋、死活題 | 未來 |
+| `nuke`（管理） | 把玩家踢下線 | 核心以房間服務 gRPC `CloseRoom` 直接中止對局；踢人、禁言、封 IP 在 M1 第二段 |
 
 ## 附錄 B：約局流程對照（NNGS ↔ M1）
 
@@ -871,12 +926,12 @@ NNGS 1.1.22 的完整指令對照見 [feature-list.md 附錄](feature-list.md#�
 
 | 步驟 | NNGS | M1 |
 | --- | --- | --- |
-| 1. 發出邀請 | `match bob B 19 10 10`：對手、執色、棋盤、時間、讀秒 | `match{to: "bob", settings: {color: "B", size: 19, komi: 7.5}}`；沒有時間設定（棋鐘在 M2），多了貼目 |
+| 1. 發出邀請 | `match bob B 19 10 10`：對手、執色、棋盤、時間、讀秒 | `match{to: "bob", settings: {color: "B", size: 19, komi: 7.5}}`；核心先沒有時間設定（棋鐘在 M1 第二段），多了貼目 |
 | 2. 發出前的檢查 | 自己不在對局中；對手在線；不是自己（自己請用 `teach`）；雙方沒有互相封鎖；對手是 `open` 狀態；對手不在對局中；待回覆的邀請數未達上限 | 對手在線；不是自己；雙方都未達同時對局上限；自己的待回覆邀請未達上限；兩人之間沒有其他待回覆的邀請 |
 | 3. 自己的狀態 | 發出邀請時自動把自己設為 `open` | 不變 |
 | 4. 對方收到 | 文字提示，附「用 `match alice W 19 10 10` 接受或 `decline alice` 拒絕」 | `match_request`，附設定與 `match_id` |
 | 5. 接受 | `accept`，或回發完全相同的 `match`（顏色互補） | `accept{match_id}`；接受時再檢查一次對局數 |
-| 6. 還價 | 用不同條件回發 `match`：自動拒絕原邀請，改由對方提出新邀請 | M1 沒有（M2） |
+| 6. 還價 | 用不同條件回發 `match`：自動拒絕原邀請，改由對方提出新邀請 | 同 NNGS（M1 第二段） |
 | 7. 拒絕 | `decline` | `decline{match_id}` |
 | 8. 撤回 | `withdraw` | `withdraw{match_id}` |
 | 9. 查看 | `pending` | `pending` |
@@ -894,11 +949,11 @@ NNGS 1.1.22 的完整指令對照見 [feature-list.md 附錄](feature-list.md#�
 | 同時的邀請數 | 多個，有上限 | 送出最多 `MAX_PENDING_MATCHES`（預設 5），同一對玩家之間一個 | 避免同一對玩家重複邀請 |
 | 逾時 | 無 | 60 秒 | 網頁上離開不一定會登出，避免邀請一直掛著 |
 | 接受方式 | `accept` 或回發相同條件 | `accept` | 網頁按鈕不需要用「回發相同條件」表示接受 |
-| 還價 | 有 | M2 | M1 先求能下完一盤 |
-| `open` 開關 | 有，發邀請會自動打開 | M2 | 同上 |
-| 封鎖檢查 | 有 | M3（封鎖功能在 M3） | |
+| 還價 | 有 | 有（M1 第二段） | 核心先求能下完一盤 |
+| `open` 開關 | 有，發邀請會自動打開 | 有（M1 第二段） | 同上 |
+| 封鎖檢查 | 有 | M2（封鎖功能在 M2） | |
 | 開局 | 立即 | 經過入場券與到場時限 | 大廳與房間是不同服務（D-01），玩家要另外連進房間 |
-| 計時設定 | 有 | M2 | M1 沒有棋鐘 |
+| 計時設定 | 有 | 有（M1 第二段） | 核心先用保底時限 |
 
 ## 附錄 C：參考 NNGS 原始碼修正的項目
 
@@ -906,7 +961,7 @@ NNGS 1.1.22 的完整指令對照見 [feature-list.md 附錄](feature-list.md#�
 
 | 項目 | NNGS 的做法（原始碼位置） | M1 的修正 | 本文 |
 | --- | --- | --- | --- |
-| 同名重複登入 | 註冊帳號：踢掉舊連線（`command.c` 的 `boot_out`）；訪客：拒絕 | 踢掉舊連線（測試階段不驗證身分，D-24） | 4.1 |
+| 同名重複登入 | 註冊帳號：踢掉舊連線（`command.c` 的 `boot_out`）；訪客：拒絕 | 原本照 NNGS 踢掉舊連線（D-24）；改為簡易註冊後，同一個帳號可以同時多條連線，也不設訪客（D-30） | 4.1 |
 | 名稱大小寫 | 登入名稱一律轉小寫比對（`command.c` 的 `stolower(login)`） | 比對不分大小寫 | 3.3 |
 | 同一座位兩條連線 | 一個名稱只能有一條連線 | 同一座位只留最新的連線，舊的收到 `entered_elsewhere` | 4.3 |
 | 斷線 | 對局封盤（`gamedb.c` 的 `game_disconnect` → `END_LOSTCONNECTION` → `game_save`），不分勝負、可續下；邀請全部清除 | **與 NNGS 不同**：單一棋手斷線 10 分鐘判負（避免輸棋的人斷線逃避）；全員斷線 5 分鐘中止、不分勝負；邀請全部清除 | 4.6（D-25） |

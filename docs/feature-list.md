@@ -2,6 +2,7 @@
 
 > 整理日期：2026-11-02。路線見 [roadmap.md](roadmap.md)，規格見 [spec_v1.md](spec_v1.md)，決定的理由見 [decisions.md](decisions.md)。
 > 對照基準：NNGS 1.1.22 的指令（見附錄）。
+> 2026-11-02 起只分兩個里程碑（D-31）：原本的 M2（對齊 NNGS 的對局功能）併入 M1，原本的 M3 改稱 M2。
 
 ## 0. 如何閱讀
 
@@ -9,10 +10,9 @@
 
 | 標記 | 意思 |
 | --- | --- |
-| M1 | 里程碑 1：能完整下一盤圍棋與五子棋 |
-| M2 | 里程碑 2：對局功能與 NNGS 對齊（不需要帳號的部分，D-28） |
-| M3 | 里程碑 3：帳號、社群、等級分（需要帳號的部分） |
-| 未來 | 已確定要做，但排在 M3 之後，順序未定 |
+| M1 | 里程碑 1：對局功能與 NNGS 對齊，圍棋與五子棋，含簡易註冊（D-31） |
+| M2 | 里程碑 2：好友、社群、等級分、第三方登入（需要正式帳號的部分） |
+| 未來 | 已確定要做，但排在 M2 之後，順序未定 |
 | 不做 | 目前不打算做（原因寫在備註） |
 
 **目前狀態**
@@ -37,11 +37,11 @@
 
 | 功能 | 說明 | 階段 | 難度 | 狀態 | NNGS 對應 |
 | --- | --- | --- | --- | --- | --- |
-| 訪客登入 | 輸入名稱即可進入（M1 的測試替身）；M2 起取消，所有人都要註冊（D-30） | M1 | 低 | PoC | 未註冊名稱直接登入 |
-| 註冊、登入、改密碼 | 簡易註冊（dummy）：名稱加密碼，發 token（D-30） | M2 | 低 | — | `register`、`password` |
-| 第三方登入 | 微信、Google、Apple、Facebook 等，換成正式的身分服務（候選見 D-30） | M3 | 中 | — | — |
-| 個人資料 | 顯示名稱、自我介紹、段位 | M3 | 低 | — | `info`、`rank`、`stats` |
-| 查詢玩家 | 依名稱搜尋玩家、看對方資料 | M3 | 低 | — | `find`、`handles`、`stats` |
+| 訪客登入 | 輸入名稱即可進入；不做，所有人都要註冊（D-30） | 不做 | 低 | PoC | 未註冊名稱直接登入 |
+| 註冊、登入、改密碼 | 簡易註冊（dummy）：名稱加密碼，發 token（D-30） | M1 | 低 | — | `register`、`password` |
+| 第三方登入 | 微信、Google、Apple、Facebook 等，換成正式的身分服務（候選見 D-30） | M2 | 中 | — | — |
+| 個人資料 | 顯示名稱、自我介紹、段位 | M2 | 低 | — | `info`、`rank`、`stats` |
+| 查詢玩家 | 依名稱搜尋玩家、看對方資料 | M2 | 低 | — | `find`、`handles`、`stats` |
 
 ## 2. 大廳
 
@@ -50,9 +50,9 @@
 | 玩家列表 | 進大廳時取得快照，之後用查詢更新；不做上線廣播 | M1 | 低 | PoC | `who` |
 | 玩家狀態 | 空閒、對局中、觀戰中 | M1 | 低 | 規格 | `who` 的狀態欄 |
 | 房間列表 | 所有對局，含遊戲、棋手、狀態、觀戰人數，變化時推送 | M1 | 中 | 規格 | `games` |
-| 不接受邀請開關 | 玩家可設定暫不接受邀請 | M2 | 低 | — | `open` |
-| 忙碌訊息 | 設定一句「忙碌中」的說明 | M2 | 低 | — | `set busy` |
-| 伺服器資訊 | 線上人數、伺服器時間 | M2 | 低 | — | `uptime`、`date` |
+| 不接受邀請開關 | 玩家可設定暫不接受邀請 | M1 | 低 | — | `open` |
+| 忙碌訊息 | 設定一句「忙碌中」的說明 | M1 | 低 | — | `set busy` |
+| 伺服器資訊 | 線上人數、伺服器時間 | M1 | 低 | — | `uptime`、`date` |
 
 ## 3. 約局與開房
 
@@ -62,12 +62,12 @@
 | 接受、拒絕 | 被邀請者回覆 | M1 | 低 | PoC | `accept`、`decline` |
 | 撤回邀請 | 邀請者取消尚未回覆的邀請 | M1 | 低 | 規格 | `withdraw` |
 | 邀請逾時 | 一段時間未回覆自動取消 | M1 | 低 | PoC | — |
-| 還價 | 用不同條件回邀，自動取代原邀請 | M2 | 低 | 規格 | `match`（不同參數回發） |
+| 還價 | 用不同條件回邀，自動取代原邀請 | M1 | 低 | 規格 | `match`（不同參數回發） |
 | 待回覆的邀請 | 列出自己發出與收到的邀請 | M1 | 低 | 規格 | `pending` |
 | 同時多盤對局 | 一位玩家同時在多個房間對局（預設最多 5 盤） | M1 | 中 | 規格 | — （NNGS 同時只能下一盤） |
-| 讓子設定 | 讓 2～9 子 | M2 | 中 | 規格 | `handicap` |
-| 讓子貼目建議 | 依雙方段位建議讓子與貼目（需要等級分） | M3 | 中 | — | `suggest`、`osuggest` |
-| 開放房間 | 建房等人加入 | M2 | 中 | 規格 | — |
+| 讓子設定 | 讓 2～9 子 | M1 | 中 | 規格 | `handicap` |
+| 讓子貼目建議 | 依雙方段位建議讓子與貼目（需要等級分） | M2 | 中 | — | `suggest`、`osuggest` |
+| 開放房間 | 建房等人加入 | M1 | 中 | 規格 | — |
 | 自動配對 | 依棋盤、計時、段位自動湊對 | 未來 | 中 | 規格（概念） | — |
 | 到場時限 | 接受後未進房就取消這局 | M1 | 低 | 規格 | — |
 
@@ -80,8 +80,8 @@
 | 認輸 | 任何時候都可以，包含終局確認階段 | M1 | 低 | 規格 | `resign` |
 | 棋手對話 | 只有對手看得到，存進棋譜 | M1 | 低 | PoC（房內聊天） | `say` |
 | 重新顯示局面 | 重新取得目前局面 | M1 | 低 | 規格（重連即取得） | `refresh`、`status` |
-| 對局中改貼目 | 一方提議、對方同意後修改（通用提議機制） | M2 | 低 | — | `komi` |
-| 對局標題、賽事名稱 | 標註對局 | M2 | 低 | — | `title`、`event` |
+| 對局中改貼目 | 一方提議、對方同意後修改（通用提議機制） | M1 | 低 | — | `komi` |
+| 對局標題、賽事名稱 | 標註對局 | M1 | 低 | — | `title`、`event` |
 
 ## 5. 終局
 
@@ -100,37 +100,37 @@
 | 功能 | 說明 | 階段 | 難度 | 狀態 | NNGS 對應 |
 | --- | --- | --- | --- | --- | --- |
 | 保底時限 | 到場、終局確認、點目每輪上限、閒置 15 分鐘判負、斷線、對局總時長（非棋鐘） | M1 | 低 | 規格 | — |
-| 日式讀秒 | 基本時間 + N 次 M 秒讀秒 | M2 | 中 | 規格 | — |
-| 延遲補償、依收到時間判超時 |  | M2 | 高 | 規格 | — |
-| 加拿大讀秒 | 時段內下滿指定手數（NNGS 的預設讀秒方式） | M2 | 低 | — | `match` 的讀秒參數 |
-| 暫停 | 雙方同意暫停時鐘 | M2 | 低 | — | `pause`、`unpause` |
-| 送時間給對手 |  | M2 | 低 | — | `addtime`、`moretime` |
-| 查詢剩餘時間 | 每次局面更新都附時鐘 | M2 | 低 | 規格 | `time` |
+| 日式讀秒 | 基本時間 + N 次 M 秒讀秒 | M1 | 中 | 規格 | — |
+| 延遲補償、依收到時間判超時 |  | M1 | 高 | 規格 | — |
+| 加拿大讀秒 | 時段內下滿指定手數（NNGS 的預設讀秒方式） | M1 | 低 | — | `match` 的讀秒參數 |
+| 暫停 | 雙方同意暫停時鐘 | M1 | 低 | — | `pause`、`unpause` |
+| 送時間給對手 |  | M1 | 低 | — | `addtime`、`moretime` |
+| 查詢剩餘時間 | 每次局面更新都附時鐘 | M1 | 低 | 規格 | `time` |
 
 ## 7. 悔棋
 
 | 功能 | 說明 | 階段 | 難度 | 狀態 | NNGS 對應 |
 | --- | --- | --- | --- | --- | --- |
-| 悔棋請求 | 請求、對手同意或拒絕；直接落子視為拒絕；最多撤回 2 手 | M2 | 中 | 規格 | `undo` |
-| 計分對局限制悔棋 | 次數上限或禁止，依建房設定 | M2 | 低 | 規格 | — |
+| 悔棋請求 | 請求、對手同意或拒絕；直接落子視為拒絕；最多撤回 2 手 | M1 | 中 | 規格 | `undo` |
+| 計分對局限制悔棋 | 次數上限或禁止，依建房設定 | M1 | 低 | 規格 | — |
 
 ## 8. 斷線與續下
 
 | 功能 | 說明 | 階段 | 難度 | 狀態 | NNGS 對應 |
 | --- | --- | --- | --- | --- | --- |
 | 基本重連 | 重新整理頁面後回到原座位 | M1 | 低 | 規格 | — |
-| 保留座位倒數 | 單一棋手斷線時保留座位 | M2 | 中 | 規格 | — |
+| 保留座位倒數 | 單一棋手斷線時保留座位 | M1 | 中 | 規格 | — |
 | 斷線判負與中止 | 單一棋手斷線 10 分鐘判負；雙方幾乎同時斷線 5 分鐘則中止（D-25） | M1 | 低 | 規格 | 斷線自動封盤（NNGS 不判負） |
-| 封盤、續下 | 雙方同意保存，之後續下；以帳號認人 | M2 | 中 | — | `adjourn`、`load`、`stored`、`look`、`touch`、`sresign` |
+| 封盤、續下 | 雙方同意保存，之後續下；以帳號認人 | M1 | 中 | — | `adjourn`、`load`、`stored`、`look`、`touch`、`sresign` |
 
 ## 9. 觀戰
 
 | 功能 | 說明 | 階段 | 難度 | 狀態 | NNGS 對應 |
 | --- | --- | --- | --- | --- | --- |
-| 觀戰 | 從房間列表進入，即時看到每一手 | M2 | 中 | 規格 | `observe`、`unobserve` |
-| 觀戰講評 | 只送觀戰者，對局中的棋手收不到；結束後寫進棋譜 | M2 | 低 | 規格 | `kibitz` |
-| 觀戰者列表 | 誰在看這局 | M2 | 低 | — | `all` |
-| 同時觀看多局 | 最多 10 局 | M2 | 低 | — | `observe`（最多 10 局）、`watching` |
+| 觀戰 | 從房間列表進入，即時看到每一手 | M1 | 中 | 規格 | `observe`、`unobserve` |
+| 觀戰講評 | 只送觀戰者，對局中的棋手收不到；結束後寫進棋譜 | M1 | 低 | 規格 | `kibitz` |
+| 觀戰者列表 | 誰在看這局 | M1 | 低 | — | `all` |
+| 同時觀看多局 | 最多 10 局 | M1 | 低 | — | `observe`（最多 10 局）、`watching` |
 | 延遲直播 | 重要對局晚幾手顯示 | 未來 | 中 | — | — |
 
 ## 10. 棋譜與戰績
@@ -140,31 +140,31 @@
 | 記錄棋譜 | 每個動作先寫入再廣播 | M1 | 中 | 規格 | 自動存檔 |
 | 查看完整棋譜 |  | M1 | 低 | 規格 | `moves` |
 | 我的對局紀錄 | 對局摘要列表 | M1 | 低 | 規格 | `results` |
-| 匯出 SGF | 下載棋譜檔 | M2 | 低 | — | `sgf`、`mail` |
-| 覆盤 | 在網頁上逐手回放 | M2 | 中 | — | `review` |
-| 研究盤 | 一人擺雙方的棋 | M2 | 中 | — | `teach`、`fteach` |
+| 匯出 SGF | 下載棋譜檔 | M1 | 低 | — | `sgf`、`mail` |
+| 覆盤 | 在網頁上逐手回放 | M1 | 中 | — | `review` |
+| 研究盤 | 一人擺雙方的棋 | M1 | 中 | — | `teach`、`fteach` |
 
 ## 11. 等級分與排名
 
 | 功能 | 說明 | 階段 | 難度 | 狀態 | NNGS 對應 |
 | --- | --- | --- | --- | --- | --- |
-| 計分／不計分對局 | 建房時選擇（M1、M2 全部不計分，但保存欄位） | M3 | 低 | 規格（欄位） | `free`、`unfree` |
-| 等級分 | 由對局紀錄計算（例如 Glicko-2），可事後重算 | M3 | 中 | — | `rating`、`rank` |
-| 段位顯示 | 玩家列表、對局畫面顯示段位 | M3 | 低 | — | `who` 的段位欄 |
-| 排行榜 |  | M3 | 低 | — | `best`、`results` |
-| 天梯 | 挑戰前面的人、贏了換位（排在等級分之後） | M3 | 中 | — | `ladder`、`join`、`drop` |
+| 計分／不計分對局 | 建房時選擇（M1 全部不計分，但保存欄位） | M2 | 低 | 規格（欄位） | `free`、`unfree` |
+| 等級分 | 由對局紀錄計算（例如 Glicko-2），可事後重算 | M2 | 中 | — | `rating`、`rank` |
+| 段位顯示 | 玩家列表、對局畫面顯示段位 | M2 | 低 | — | `who` 的段位欄 |
+| 排行榜 |  | M2 | 低 | — | `best`、`results` |
+| 天梯 | 挑戰前面的人、贏了換位（排在等級分之後） | M2 | 中 | — | `ladder`、`join`、`drop` |
 
 ## 12. 社群
 
 | 功能 | 說明 | 階段 | 難度 | 狀態 | NNGS 對應 |
 | --- | --- | --- | --- | --- | --- |
-| 好友與上線通知 | 加好友、好友上線時通知 | M3 | 中 | — | `notify`、`znotify`、`unnotify` |
-| 私訊 | 一對一訊息，在房間中也收得到 | M3 | 低 | PoC | `tell` |
-| 封鎖 | 不接收某人的訊息與邀請 | M3 | 低 | — | `censor`、`uncensor` |
-| 離線訊息 | 對方離線時留言，上線後收到 | M3 | 中 | — | `messages`、`erase` |
-| 大廳聊天 | 大廳公開聊天；需要以帳號禁言，所以和社群功能一起做 | M3 | 低 | PoC | `shout`、`gshout` |
-| 聊天頻道 | 多個主題聊天室 | M3 | 中 | — | `channel`、`inchannel` 等 |
-| 公告、新聞 | 系統公告 | M2 | 低 | — | `news`、`post`、`shownote` |
+| 好友與上線通知 | 加好友、好友上線時通知 | M2 | 中 | — | `notify`、`znotify`、`unnotify` |
+| 私訊 | 一對一訊息，在房間中也收得到 | M2 | 低 | PoC | `tell` |
+| 封鎖 | 不接收某人的訊息與邀請 | M2 | 低 | — | `censor`、`uncensor` |
+| 離線訊息 | 對方離線時留言，上線後收到 | M2 | 中 | — | `messages`、`erase` |
+| 大廳聊天 | 大廳公開聊天；需要以帳號禁言，所以和社群功能一起做 | M2 | 低 | PoC | `shout`、`gshout` |
+| 聊天頻道 | 多個主題聊天室 | M2 | 中 | — | `channel`、`inchannel` 等 |
+| 公告、新聞 | 系統公告 | M1 | 低 | — | `news`、`post`、`shownote` |
 
 ## 13. 其他對局模式與遊戲
 
@@ -182,9 +182,9 @@
 
 | 功能 | 說明 | 階段 | 難度 | 狀態 | NNGS 對應 |
 | --- | --- | --- | --- | --- | --- |
-| 禁言、踢人、封 IP | 以帳號與 IP 處理（觀戰講評需要） | M2 | 中 | — | `muzzle`、`gmuzzle`、`aban`、`nuke` 等 |
-| 系統公告 |  | M2 | 低 | — | `announce`、`createnews` |
-| 管理員查詢 | 查玩家、登入紀錄 | M2 | 中 | — | `chkpl`、`chkip`、`logons`、`last` |
+| 禁言、踢人、封 IP | 以帳號與 IP 處理（觀戰講評需要） | M1 | 中 | — | `muzzle`、`gmuzzle`、`aban`、`nuke` 等 |
+| 系統公告 |  | M1 | 低 | — | `announce`、`createnews` |
+| 管理員查詢 | 查玩家、登入紀錄 | M1 | 中 | — | `chkpl`、`chkip`、`logons`、`last` |
 | 強制關房、停機 |  | M1（強制關房）、未來（其餘） | 低 | 規格（`CloseRoom`） | `nuke`（踢下線，NNGS 沒有直接結束對局的指令）、`shutdown` |
 | 檢舉與防作弊偵測 | AI 吻合率比對、人工審查 | 未來 | 高 | — | — |
 
@@ -193,13 +193,14 @@
 | 項目 | 原因 |
 | --- | --- |
 | 文字指令介面、指令別名、客戶端設定 | 改用網頁介面（NNGS 的 `alias`、`set`、`toggle`、`client`、`help`、`next`、`translate`、`ping`、`ayt` 等） |
-| 表情指令、提醒聲 | 網頁介面另有做法，或價值低（`emote`、`beep`、`bell`、`it`、`git`、`zz`）；聊天頻道已改排 M3 |
+| 表情指令、提醒聲 | 網頁介面另有做法，或價值低（`emote`、`beep`、`bell`、`it`、`git`、`zz`）；聊天頻道已改排 M2 |
 | 日本規則 | 恢復對局在數目法下會影響目數，終局處理要另一套程序 |
+| 訪客登入 | 簡易註冊已經夠簡單，訪客沒有意義（D-30） |
 | 寄信相關功能 | 改用網頁下載（`mail`、`mhelp`、`mmess`） |
 
 ## 16. 「未來」功能一覽（依難度）
 
-以下功能已確定要做，但排在 M3 之後、順序未定。排序時可以先挑難度低、價值高的。
+以下功能已確定要做，但排在 M2 之後、順序未定。排序時可以先挑難度低、價值高的。
 
 | 難度 | 功能 | 說明 |
 | --- | --- | --- |
@@ -218,19 +219,19 @@ NNGS 1.1.22 共 160 個指令：一般玩家約 120 個，管理員約 40 個。
 
 | 分組 | NNGS 指令 | 本平台 |
 | --- | --- | --- |
-| 約局 | `match`、`accept`、`decline`、`withdraw`、`pending`、`open`、`tmatch`、`goematch`、`choice` | 邀局、撤回、待回覆 M1；還價、不接受邀請開關 M2；比賽未來；`goematch`（應氏規則）與 `choice`（選遊戲）由建房設定取代 |
-| 對局 | 座標、`pass`、`resign`、`say`、`refresh`、`status`、`moves`、`komi`、`handicap`、`nocaps` | M1；讓子、改貼目 M2 |
+| 約局 | `match`、`accept`、`decline`、`withdraw`、`pending`、`open`、`tmatch`、`goematch`、`choice` | 邀局、撤回、待回覆、還價、不接受邀請開關 M1；比賽未來；`goematch`（應氏規則）與 `choice`（選遊戲）由建房設定取代 |
+| 對局 | 座標、`pass`、`resign`、`say`、`refresh`、`status`、`moves`、`komi`、`handicap`、`nocaps` | M1（含讓子、改貼目） |
 | 終局 | `done`、`score`、`undo`（點目階段） | M1 |
-| 悔棋 | `undo` | M2 |
-| 計時 | `time`、`pause`、`unpause`、`addtime`、`moretime` | 全部 M2 |
-| 封盤續下 | `adjourn`、`load`、`save`、`stored`、`look`、`touch`、`sresign` | M2 |
-| 觀戰 | `observe`、`unobserve`、`kibitz`、`all`、`watching`、`games`、`ginfo`、`title`、`event` | 房間列表 M1；其餘 M2 |
-| 棋譜與戰績 | `sgf`、`mail`、`results`、`rresults`、`review` | 摘要與棋譜 M1；SGF、覆盤 M2；`rresults`（查別人的戰績）M3 |
-| 等級分 | `rating`、`orating`、`rank`、`free`、`unfree`、`ladder`、`join`（加入天梯）、`best`、`drop`、`suggest`、`osuggest` | M3（需要帳號） |
-| 其他模式 | `teach`、`fteach`、`pair`、`teamgo`、`spair`、`problem` | 研究盤 M2；聯棋（獨立規則）、死活題未來 |
-| 玩家與大廳 | `who`、`awho`、`stats`、`info`、`moreinfo`、`find`、`handles`、`set busy`、`uptime`、`date`、`admins` | 玩家列表 M1；忙碌訊息、伺服器資訊 M2；個人資料與查詢 M3 |
-| 帳號 | `register`、`password`、`reset`（清除戰績）、`quit`、`qu` | 簡易註冊 M2、第三方登入 M3；清除戰績不做 |
-| 社群 | `tell`、`shout`、`gshout`、`messages`、`erase`、`notify`、`znotify`、`unnotify`、`censor`、`uncensor`、`news`、`post`、`shownote` | 公告 M2；好友、私訊、封鎖、離線訊息、大廳聊天 M3 |
-| 聊天頻道與趣味指令 | `channel`、`inchannel`、`invite`（邀請進頻道）、`ctitle`、`dnd`、`lock`、`unlock`、`lchan`、`zz`、`it`、`git`、`emote`、`pzz`、`beep` | 聊天頻道 M3；趣味指令不做 |
+| 悔棋 | `undo` | M1 |
+| 計時 | `time`、`pause`、`unpause`、`addtime`、`moretime` | 全部 M1 |
+| 封盤續下 | `adjourn`、`load`、`save`、`stored`、`look`、`touch`、`sresign` | M1 |
+| 觀戰 | `observe`、`unobserve`、`kibitz`、`all`、`watching`、`games`、`ginfo`、`title`、`event` | M1 |
+| 棋譜與戰績 | `sgf`、`mail`、`results`、`rresults`、`review` | 摘要、棋譜、SGF、覆盤 M1；`rresults`（查別人的戰績）M2 |
+| 等級分 | `rating`、`orating`、`rank`、`free`、`unfree`、`ladder`、`join`（加入天梯）、`best`、`drop`、`suggest`、`osuggest` | M2（需要帳號） |
+| 其他模式 | `teach`、`fteach`、`pair`、`teamgo`、`spair`、`problem` | 研究盤 M1；聯棋（獨立規則）、死活題未來 |
+| 玩家與大廳 | `who`、`awho`、`stats`、`info`、`moreinfo`、`find`、`handles`、`set busy`、`uptime`、`date`、`admins` | 玩家列表、忙碌訊息、伺服器資訊 M1；個人資料與查詢 M2 |
+| 帳號 | `register`、`password`、`reset`（清除戰績）、`quit`、`qu` | 簡易註冊 M1、第三方登入 M2；清除戰績不做 |
+| 社群 | `tell`、`shout`、`gshout`、`messages`、`erase`、`notify`、`znotify`、`unnotify`、`censor`、`uncensor`、`news`、`post`、`shownote` | 公告 M1；好友、私訊、封鎖、離線訊息、大廳聊天 M2 |
+| 聊天頻道與趣味指令 | `channel`、`inchannel`、`invite`（邀請進頻道）、`ctitle`、`dnd`、`lock`、`unlock`、`lchan`、`zz`、`it`、`git`、`emote`、`pzz`、`beep` | 聊天頻道 M2；趣味指令不做 |
 | 客戶端與文字介面 | `alias`、`unalias`、`set`、`toggle`、`variables`、`client`、`clntvrfy`、`help`、`next`、`mhelp`、`mmess`、`translate`、`ping`、`ayt`、`bell` | 不做（網頁介面取代） |
-| 管理 | `aban`、`muzzle`、`gmuzzle`、`bmuzzle`、`announce`、`ashout`、`chkpl`、`chkip`、`logons`、`last`、`adrop`、`shutdown`、`nuke`、`remplayer`、`hide`、`asetpasswd` 等約 40 個（帳號設定、新聞、天梯重算、除錯等） | 強制關房 M1；禁言、踢人、封 IP、公告、管理員查詢 M2；其餘未來 |
+| 管理 | `aban`、`muzzle`、`gmuzzle`、`bmuzzle`、`announce`、`ashout`、`chkpl`、`chkip`、`logons`、`last`、`adrop`、`shutdown`、`nuke`、`remplayer`、`hide`、`asetpasswd` 等約 40 個（帳號設定、新聞、天梯重算、除錯等） | 強制關房 M1；禁言、踢人、封 IP、公告、管理員查詢 M1；其餘未來 |
