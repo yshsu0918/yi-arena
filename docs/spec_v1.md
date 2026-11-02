@@ -4,6 +4,7 @@
 > 本文件是全部功能的規格；**M1 的實作規格見 [spec_v2.md](spec_v2.md)**。
 > 本文件只寫系統「怎麼運作」。每個功能的階段見 [feature-list.md](feature-list.md)，實作順序見 [roadmap.md](roadmap.md)，決定的理由見 [decisions.md](decisions.md)（文中以 D-xx 標註）。
 > 圖與介面中的函式名稱是**虛擬碼**；前端指令名稱沿用 NNGS（D-22），M1 的完整定義見 [spec_v2.md](spec_v2.md)。
+> 服務分工（遊戲知識只在規則服務、座位用 1／2）以 [D-27](decisions.md#d-27) 與 spec_v2 為準；本文件部分段落仍以黑白稱呼座位。
 
 ## 1. 概觀
 
