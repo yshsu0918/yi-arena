@@ -175,7 +175,7 @@ sequenceDiagram
 
 ### 3.3 入房與重連
 
-**里程碑**：入房、基本重連、到場時限為 M1；保留座位倒數、跨裝置重連為 M2。
+**里程碑**：入房、基本重連、到場時限為 M1；保留座位倒數為 M2；M1 換裝置可用同名登入加 `rejoin`（不驗證身分，D-24），有身分驗證的跨裝置重連需要 M3 的帳號。
 
 **行為**
 
@@ -407,7 +407,7 @@ sequenceDiagram
 | `CreateRoom` | `room_id`、`game`、`settings`、`seats[{seat, user_id, name, color}]`（開放房間只填房主）、`visibility{listed, spectate}` | `room_id`、`ws_url` |
 | `ReserveSeat` | `room_id`、`user_id`、`name` | `seat`，或 `full`／`finished` |
 | `ListRooms` | — | 所有房間的 ID、成員、狀態、觀戰人數 |
-| `GetRecord` | `record_id` | 完整棋譜 |
+| `GetRecord` | `room_id` | 完整棋譜 |
 | `CloseRoom` | `room_id` | 強制關房（管理用） |
 
 ### 4.4 房間服務 → 大廳服務：房間事件（gRPC）

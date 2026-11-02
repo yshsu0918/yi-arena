@@ -1,6 +1,6 @@
 # 規格 v2：里程碑 1（能完整下一盤圍棋與五子棋）
 
-> 整理日期：2026-11-01。狀態：**M1 的實作規格**。
+> 整理日期：2026-11-02。狀態：**M1 的實作規格**。
 > 只涵蓋 M1。完整的功能規劃見 [spec_v1.md](spec_v1.md)，階段見 [feature-list.md](feature-list.md)，理由見 [decisions.md](decisions.md)（文中以 D-xx 標註）。
 > 訊息以 JSON 描述欄位；實際的 proto 定義在 `proto/`，以本文件為準。
 > **指令名稱沿用 NNGS**（D-22），對照見附錄 A；**一位玩家可以同時在多個房間對局**（D-21）；**M1 同時支援圍棋與五子棋**（D-23）。
@@ -35,26 +35,24 @@
 | 規則服務 | Node.js | — | gRPC 伺服器（接收房間的 `Apply`、大廳的 `ValidateSettings`） |
 | PostgreSQL | — | — | 兩個資料庫：`lobby`、`rooms`，各自的帳號 |
 
-**資料流向**（每條線上是傳的資料）：
+**資料流向**（每條線上是傳的資料；→ 是箭頭起點送往終點，← 是回傳）：
 
 ```mermaid
 flowchart LR
-  FL["前端：大廳畫面"]
-  FR["前端：對局畫面"]
+  subgraph FE["前端（瀏覽器）"]
+    FL["大廳畫面"]
+    FR["對局畫面"]
+  end
   L["大廳服務（Go）"]
   R["房間服務（Go）"]
   S["規則服務（Node，無狀態）"]
   LDB[("lobby 資料庫<br/>戰績摘要")]
   RDB[("rooms 資料庫<br/>棋譜、待送事件")]
 
-  FL -- "login、who、match、accept、rejoin、moves" --> L
-  L -- "玩家、房間列表、邀請、game_ready（入場券）" --> FL
-  FR -- "enter（入場券）、play、pass、done、undo、say" --> R
-  R -- "state（局面、提案、時限）、game_over" --> FR
-  L -- "CreateRoom、GetRecord、ListRooms、CloseRoom" --> R
-  R -- "房間事件：started、finished（摘要）、cancelled、closed" --> L
-  R -- "設定 + 動作紀錄 + 新動作" --> S
-  S -- "合不合法、局面、階段、提案、結果" --> R
+  FL <-- "→ login、who、match、accept、rejoin、moves<br/>← 玩家、房間列表、邀請、game_ready（入場券）" --> L
+  FR <-- "→ enter（入場券）、play、pass、done、undo、say<br/>← state（局面、提案、時限）、game_over" --> R
+  L <-- "→ CreateRoom、GetRecord、ListRooms、CloseRoom<br/>← 房間事件：started、finished（摘要）、cancelled、closed" --> R
+  R <-- "→ 設定 + 動作紀錄 + 新動作<br/>← 合不合法、局面、階段、提案、結果" --> S
   L -- "ValidateSettings（檢查設定、補預設值）" --> S
   L --> LDB
   R --> RDB
@@ -62,6 +60,7 @@ flowchart LR
 
 - **棋譜只在房間服務**：大廳要看棋譜得用 `GetRecord` 問房間；大廳自己只存戰績摘要（D-11）。
 - **規則服務不存任何資料**：每次由房間帶完整的動作紀錄來重放（D-05）。
+- **前端同時連兩個服務**：大廳畫面連大廳（約局），對局畫面直接連房間（下棋），兩條 WebSocket。
 - **前端連房間要靠大廳發的入場券**：大廳與房間之間不同步玩家連線，只靠入場券與房間事件。
 - 大廳與房間只透過 gRPC 溝通，不共用資料庫（D-01）。
 - **遊戲知識只在規則服務**（D-27）：大廳不知道有哪些設定、房間不知道座標與提案的格式，遇到都交給規則服務。大廳呼叫規則服務只為了驗證設定；規則服務沒有狀態，所以不會造成資料不一致。
@@ -790,7 +789,7 @@ stateDiagram-v2
 - [ ] 已 `done` 的一方斷線後對手切換死子，確認時限不會開始倒數；每輪上限最後幾秒切換死子，對方仍有 60 秒。
 - [ ] 大廳在有房間處於 `finished` 時重啟，玩家的對局名額不會被佔住；房間服務重啟時，所有未關閉的房間都會回報 `room.closed`。
 - [ ] 重放含點目的棋譜時不呼叫估算器（以計數或 mock 驗證）。
-- [ ] 一方斷線超過 10 分鐘判負（`W+F`／`B+F`），計入雙方戰績；雙方都斷線且 5 分鐘先到時中止、不分勝負。
+- [ ] 一方斷線超過 10 分鐘判負（`W+F`／`B+F`），計入雙方戰績。
 - [ ] 點目時雙方不停切換死子：3 分鐘後自動恢復對局；第 3 次協商失敗時局結束，結果為系統判定（`adjudicated`），棋譜完整保存。
 - [ ] 大廳停機期間結束的局，大廳恢復後戰績仍會寫入；房間服務重啟時，進行中的局記為中止並出現在戰績中。
 - [ ] 到場時限、單一棋手斷線、全員斷線、結束後關房，都在時限內完成，不留下殘留的房間或 `games` 紀錄。
