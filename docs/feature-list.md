@@ -38,7 +38,8 @@
 | 功能 | 說明 | 階段 | 難度 | 狀態 | NNGS 對應 |
 | --- | --- | --- | --- | --- | --- |
 | 訪客登入 | 輸入名稱即可進入，名稱不可與線上玩家重複 | M1 | 低 | PoC | 未註冊名稱直接登入 |
-| 註冊、登入、改密碼 | 正式帳號 | M3 | 中 | — | `register`、`password` |
+| 註冊、登入、改密碼 | 簡易註冊（dummy）：名稱加密碼，發 token（D-30） | M2 | 低 | — | `register`、`password` |
+| 第三方登入 | 微信、Google、Apple、Facebook 等，換成正式的身分服務（候選見 D-30） | M3 | 中 | — | — |
 | 個人資料 | 顯示名稱、自我介紹、段位 | M3 | 低 | — | `info`、`rank`、`stats` |
 | 查詢玩家 | 依名稱搜尋玩家、看對方資料 | M3 | 低 | — | `find`、`handles`、`stats` |
 
@@ -120,7 +121,7 @@
 | 基本重連 | 重新整理頁面後回到原座位 | M1 | 低 | 規格 | — |
 | 保留座位倒數 | 單一棋手斷線時保留座位 | M2 | 中 | 規格 | — |
 | 斷線判負與中止 | 單一棋手斷線 10 分鐘判負；雙方幾乎同時斷線 5 分鐘則中止（D-25） | M1 | 低 | 規格 | 斷線自動封盤（NNGS 不判負） |
-| 封盤、續下 | 雙方同意保存，之後續下；M2 以名稱認人（同 D-24），M3 改用帳號 | M2 | 中 | — | `adjourn`、`load`、`stored`、`look`、`touch`、`sresign` |
+| 封盤、續下 | 雙方同意保存，之後續下；以帳號認人 | M2 | 中 | — | `adjourn`、`load`、`stored`、`look`、`touch`、`sresign` |
 
 ## 9. 觀戰
 
@@ -181,7 +182,7 @@
 
 | 功能 | 說明 | 階段 | 難度 | 狀態 | NNGS 對應 |
 | --- | --- | --- | --- | --- | --- |
-| 禁言、踢人、封 IP | M2 以名稱與 IP 處理（觀戰講評需要）；封鎖帳號在 M3 | M2 | 中 | — | `muzzle`、`gmuzzle`、`aban`、`nuke` 等 |
+| 禁言、踢人、封 IP | 以帳號與 IP 處理（觀戰講評需要） | M2 | 中 | — | `muzzle`、`gmuzzle`、`aban`、`nuke` 等 |
 | 系統公告 |  | M2 | 低 | — | `announce`、`createnews` |
 | 管理員查詢 | 查玩家、登入紀錄 | M2 | 中 | — | `chkpl`、`chkip`、`logons`、`last` |
 | 強制關房、停機 |  | M1（強制關房）、未來（其餘） | 低 | 規格（`CloseRoom`） | `nuke`（踢下線，NNGS 沒有直接結束對局的指令）、`shutdown` |
@@ -222,13 +223,13 @@ NNGS 1.1.22 共 160 個指令：一般玩家約 120 個，管理員約 40 個。
 | 終局 | `done`、`score`、`undo`（點目階段） | M1 |
 | 悔棋 | `undo` | M2 |
 | 計時 | `time`、`pause`、`unpause`、`addtime`、`moretime` | 全部 M2 |
-| 封盤續下 | `adjourn`、`load`、`save`、`stored`、`look`、`touch`、`sresign` | M2（以名稱認人，M3 改用帳號） |
+| 封盤續下 | `adjourn`、`load`、`save`、`stored`、`look`、`touch`、`sresign` | M2 |
 | 觀戰 | `observe`、`unobserve`、`kibitz`、`all`、`watching`、`games`、`ginfo`、`title`、`event` | 房間列表 M1；其餘 M2 |
 | 棋譜與戰績 | `sgf`、`mail`、`results`、`rresults`、`review` | 摘要與棋譜 M1；SGF、覆盤 M2；`rresults`（查別人的戰績）M3 |
 | 等級分 | `rating`、`orating`、`rank`、`free`、`unfree`、`ladder`、`join`（加入天梯）、`best`、`drop`、`suggest`、`osuggest` | M3（需要帳號） |
 | 其他模式 | `teach`、`fteach`、`pair`、`teamgo`、`spair`、`problem` | 研究盤 M2；聯棋（獨立規則）、死活題未來 |
 | 玩家與大廳 | `who`、`awho`、`stats`、`info`、`moreinfo`、`find`、`handles`、`set busy`、`uptime`、`date`、`admins` | 玩家列表 M1；忙碌訊息、伺服器資訊 M2；個人資料與查詢 M3 |
-| 帳號 | `register`、`password`、`reset`（清除戰績）、`quit`、`qu` | 註冊 M3；清除戰績不做 |
+| 帳號 | `register`、`password`、`reset`（清除戰績）、`quit`、`qu` | 簡易註冊 M2、第三方登入 M3；清除戰績不做 |
 | 社群 | `tell`、`shout`、`gshout`、`messages`、`erase`、`notify`、`znotify`、`unnotify`、`censor`、`uncensor`、`news`、`post`、`shownote` | 公告 M2；好友、私訊、封鎖、離線訊息、大廳聊天 M3 |
 | 聊天頻道與趣味指令 | `channel`、`inchannel`、`invite`（邀請進頻道）、`ctitle`、`dnd`、`lock`、`unlock`、`lchan`、`zz`、`it`、`git`、`emote`、`pzz`、`beep` | 聊天頻道 M3；趣味指令不做 |
 | 客戶端與文字介面 | `alias`、`unalias`、`set`、`toggle`、`variables`、`client`、`clntvrfy`、`help`、`next`、`mhelp`、`mmess`、`translate`、`ping`、`ayt`、`bell` | 不做（網頁介面取代） |
