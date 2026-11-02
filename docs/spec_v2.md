@@ -34,6 +34,35 @@
 | 規則服務 | Node.js | — | gRPC 伺服器（接收房間呼叫） |
 | PostgreSQL | — | — | 兩個資料庫：`lobby`、`rooms`，各自的帳號 |
 
+**資料流向**（每條線上是傳的資料）：
+
+```mermaid
+flowchart LR
+  FL["前端：大廳畫面"]
+  FR["前端：對局畫面"]
+  L["大廳服務（Go）"]
+  R["房間服務（Go）"]
+  S["規則服務（Node，無狀態）"]
+  LDB[("lobby 資料庫<br/>戰績摘要")]
+  RDB[("rooms 資料庫<br/>棋譜、待送事件")]
+
+  FL -- "login、who、match、accept、rejoin、moves" --> L
+  L -- "玩家、房間列表、邀請、game_ready（入場券）" --> FL
+  FR -- "enter（入場券）、play、pass、done、undo、say" --> R
+  R -- "state（局面、提案、時限）、game_over" --> FR
+  L -- "CreateRoom、GetRecord、ListRooms、CloseRoom" --> R
+  R -- "房間事件：started、finished（摘要）、cancelled、closed" --> L
+  R -- "設定 + 動作紀錄 + 新動作" --> S
+  S -- "合不合法、局面、階段、提案、結果" --> R
+  L --> LDB
+  R --> RDB
+```
+
+- **棋譜只在房間服務**：大廳要看棋譜得用 `GetRecord` 問房間；大廳自己只存戰績摘要（D-11）。
+- **規則服務不存任何資料**：每次由房間帶完整的動作紀錄來重放（D-05）。
+- **前端連房間要靠大廳發的入場券**：大廳與房間之間不同步玩家連線，只靠入場券與房間事件。
+- 大廳與房間只透過 gRPC 溝通，不共用資料庫（D-01）。
+
 **連線**：前端與大廳一條 WebSocket；與房間服務**一條 WebSocket，同時承載多個房間**，每則訊息帶 `room_id`（D-21）。
 
 開發用埠號（可由環境變數覆寫）：
