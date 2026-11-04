@@ -109,6 +109,7 @@ flowchart LR
 | `MAX_PENDING_MATCHES`：每人同時送出的待回覆邀請上限 | 5 |
 | `MATCH_TTL`：邀請逾時 | 60 秒 |
 | `HEARTBEAT`：WebSocket ping 間隔；連續 2 次沒有回應即視為斷線 | 20 秒 |
+| `LOBBY_GRACE`：與大廳斷線後多久沒重連，才取消他的待回覆邀請（重新整理用） | 10 秒 |
 | `TICKET_SECRET`：入場券簽章密鑰 | （必填） |
 | `AUTH_ISSUER`、`AUTH_JWKS_URL`：大廳驗證 token 用的簽發者與公鑰位置 | 身分服務的位址 |
 | `TOKEN_TTL`：登入 token 有效期（身分服務） | 7 天 |
@@ -261,12 +262,15 @@ repo
 
 1. 玩家先在身分服務註冊、登入（4.11 節），取得 token。
 2. 前端連上大廳，第一則訊息送 `login{token}`。大廳用身分服務的公鑰驗證簽章與到期時間，取出 `user_id`、`name`、`role`；無效或過期 → `error{invalid_token}` 並斷線。
-3. 同一個帳號可以同時開多個分頁、多台裝置，各自是一條大廳連線，不互踢。
+3. **同一個帳號同時只有一個登入**（D-30）：這個帳號已經有大廳連線時，新的登入成功，**舊的被踢掉**，與 NNGS 對註冊帳號的做法相同（`boot_out`）。
+   - 舊的大廳連線收到 `error{logged_in_elsewhere}` 後斷開；大廳同時呼叫房間服務 `Kick{user_id}`，舊連線在各房間的連線也一起斷開。
+   - **對局不受影響**：對局在房間服務，新連線的 `welcome.games` 列出他的房間，前端自動 `rejoin` 回去（4.7 節）。斷開到回去之間照常適用斷線時限。
+   - **待回覆的邀請保留**，移到新連線上（同一個人只是換了地方）；與 NNGS 不同，NNGS 踢掉舊連線時會清掉邀請並把對局封盤。
 4. 成功 → `welcome{you, players, rooms, games}`，其中 `games` 是自己正在進行的房間（重新登入時用來回到對局）。
    - **`games` 的來源**：大廳以房間列表為準，列出 `players` 有這個 `user_id`、且 `status` 為 `waiting` 或 `playing` 的房間。所以玩家離線再登入、或建房完成時他不在線，`games` 都不會遺失；它不綁在大廳連線上。對局數上限（4.2 節）與 `rejoin`（4.7 節）用同一個來源。
 5. 玩家列表**不推送**（D-09）；前端送 `who` 取得 `players`。
 6. 房間列表：送 `games` 取得完整列表；房間新增、狀態變更、移除時，大廳主動推送 `rooms{op, room}` 給**所有連著大廳的玩家**（對局中的玩家也收得到，是否顯示由前端決定）。
-7. 玩家與大廳斷線：他送出與收到的待回覆邀請都結束（`cancelled`），與 NNGS 相同；他進行中的對局不受影響（對局在房間服務，另有連線）。
+7. 玩家與大廳斷線：`LOBBY_GRACE`（10 秒）內重新連上就當作沒斷，例如按重新整理；超過才把他送出與收到的待回覆邀請都結束（`cancelled`），與 NNGS 相同。被新登入踢掉不算斷線（第 3 步）。他進行中的對局不受影響（對局在房間服務，另有連線）。
 8. 大廳以單一事件迴圈處理所有指令；呼叫房間服務 `CreateRoom` 在另一個 goroutine 進行，完成後把結果送回事件迴圈（因此有 4.2 節的「建房中」狀態），等待期間不會卡住其他玩家的指令。
 
 ### 4.2 約局
@@ -543,12 +547,12 @@ stateDiagram-v2
 3. 房間驗證後回到原座位，**換發新的重連憑證**（舊的立即失效），並送目前的 `state`。同一座位若還有舊連線，舊連線離開該房間。
 4. 房間已關閉 → `error{room_id, room_closed}`。
 
-**新分頁或其他裝置**（沒有重連憑證）：
+**換分頁或換裝置**（沒有重連憑證）：
 
-1. 玩家用同一個帳號登入（新分頁可直接用瀏覽器裡的 token），`welcome.games` 列出他進行中的房間。
+1. 玩家用同一個帳號登入（新分頁可直接用瀏覽器裡的 token）；舊的分頁或裝置被踢掉（4.1 節第 3 步）。`welcome.games` 列出他進行中的房間。
 2. 送 `rejoin{room_id}` → 大廳確認這個房間在他的 `games` 裡（4.1 節：`waiting` 或 `playing`；已結束的局改用 `moves` 查棋譜），否則 `not_your_game`；確認後重新簽發入場券，送 `game_ready`；之後同 4.3 節第 4 步。舊分頁在這個房間的連線被踢掉（4.3 節第 6 步）。
 
-換裝置也一樣：在另一台裝置登入同一個帳號，再 `rejoin`。
+前端登入後對 `welcome.games` 的每個房間自動 `rejoin`，玩家感覺就是「換到新的地方繼續下」。
 
 ### 4.8 棋譜與戰績
 
@@ -904,6 +908,7 @@ stateDiagram-v2
 | `invalid_name`、`name_taken`、`weak_password` | 身分服務 | 註冊時名稱不合法、已被註冊、密碼太短 |
 | `wrong_password`、`rate_limited` | 身分服務 | 名稱或密碼錯誤；嘗試太多次 |
 | `invalid_token` | 大廳 | 登入 token 無效、過期，或帳號已刪除（被封鎖是 `banned`） |
+| `logged_in_elsewhere` | 大廳 | 同一個帳號在別處登入，這條連線被踢掉 |
 | `invalid_settings` | 大廳（由規則服務判斷） | 對局設定不合法 |
 | `no_such_player` | 大廳 | 對方不在線 |
 | `invalid` | 大廳 | 邀請自己 |
@@ -944,7 +949,8 @@ stateDiagram-v2
 - [ ] `resign` 可以在 `playing` 與 `agreement` 結束對局。
 - [ ] 重新整理頁面，用重連憑證回到所有進行中的房間；舊的重連憑證失效。
 - [ ] 註冊、登入、改密碼可用；名稱大小寫不同視為同一個，不能重複註冊；token 過期或帳號刪除後無法登入大廳；被 `ban` 的帳號連大廳回 `banned`。
-- [ ] 開新分頁或換裝置，用同一個帳號登入後 `rejoin` 回到對局，舊分頁在該房間的連線被踢掉（同一座位只留一條連線）；大廳連線可以同時有多條。
+- [ ] 開新分頁或換裝置登入同一個帳號：舊的收到 `logged_in_elsewhere` 並斷開（大廳與房間的連線都斷開），新的自動 `rejoin` 回到所有對局；待回覆的邀請還在。
+- [ ] 按重新整理（10 秒內重連）不會取消待回覆的邀請；斷線超過 10 秒才取消。
 - [ ] `CreateRoom` 失敗時，被邀請者收到帶 `match_id` 的 `room_unavailable`，邀請仍可再 `accept`；兩個邀請同時建房不會超過對局上限。
 - [ ] 一方送 `done` 後，另一方用原本的版本送 `done` 仍然成功；對方切換死子後才送的舊版本 `done` 回 `stale_version`。
 - [ ] 點目時一方斷線，確認時限到期不會定案；他重連後確認時限重新計算。
@@ -1423,7 +1429,7 @@ NNGS 1.1.22 的完整指令對照見 [feature-list.md 附錄](feature-list.md#�
 
 | NNGS 指令 | 本平台指令 | 函式呼叫（大廳服務） | 架構差異與做法 |
 | --- | --- | --- | --- |
-| `register`、登入時輸入名稱與密碼 | 身分服務 `/register`、`/login`，再 `login{token}` | `Gateway.Accept` → `Lobby.Login(token)` → `Tokens.Verify()`（公鑰）→ `Session.Send(welcome)` | NNGS 的登入是 telnet 提示，同名重複登入會踢掉舊的；我們先向身分服務登入拿 token，再以 WebSocket 第一則訊息出示；同一個帳號可以同時多條連線（D-30） |
+| `register`、登入時輸入名稱與密碼 | 身分服務 `/register`、`/login`，再 `login{token}` | `Gateway.Accept` → `Lobby.Login(token)` → `Tokens.Verify()`（公鑰）→ `Session.Send(welcome)` | NNGS 的登入是 telnet 提示，同名重複登入會踢掉舊的；我們先向身分服務登入拿 token，再以 WebSocket 第一則訊息出示。同一個帳號同時只有一個登入，新的踢掉舊的，與 NNGS 相同；但對局不封盤、邀請保留（D-30） |
 | `who` | `who` | `Lobby.Who()` → 回傳 `players` | NNGS 的篩選參數（例如 `who o`）不做 |
 | `games` | `games` | `Lobby.Games()` → 回傳房間列表 | NNGS 只能查；我們另外在列表變化時主動推送 `rooms` |
 | `match bob B 19 10 10` | `match{to, settings}` | `Lobby.Match()` → `RulesClient.ValidateSettings()`（gRPC）→ `checkMatch()` → `Matches.Create()` → `Session(to).Send(match_request)` | 時間、讀秒參數放在 `settings.time`（12.3 節）；多了 `komi`。邀請會逾時（NNGS 沒有逾時） |
@@ -1514,7 +1520,7 @@ NNGS 1.1.22 的完整指令對照見 [feature-list.md 附錄](feature-list.md#�
 
 | 項目 | NNGS 的做法（原始碼位置） | 本平台的做法 | 本文 |
 | --- | --- | --- | --- |
-| 同名重複登入 | 註冊帳號：踢掉舊連線（`command.c` 的 `boot_out`）；訪客：拒絕 | 用簡易註冊的帳號登入，同一個帳號可以同時多條連線；不設訪客（D-30） | 4.1 |
+| 同名重複登入 | 註冊帳號：踢掉舊連線（`command.c` 的 `boot_out`）；訪客：拒絕 | 用簡易註冊的帳號登入，不設訪客；同一個帳號同時只有一個登入，新的踢掉舊的（同 NNGS），但對局不封盤、邀請保留（D-30） | 4.1 |
 | 名稱大小寫 | 登入名稱一律轉小寫比對（`command.c` 的 `stolower(login)`） | 比對不分大小寫 | 3.3 |
 | 同一座位兩條連線 | 一個名稱只能有一條連線 | 同一座位只留最新的連線，舊的收到 `entered_elsewhere` | 4.3 |
 | 斷線 | 對局封盤（`gamedb.c` 的 `game_disconnect` → `END_LOSTCONNECTION` → `game_save`），不分勝負、可續下；邀請全部清除 | **與 NNGS 不同**：單一棋手斷線 10 分鐘判負（避免輸棋的人斷線逃避）；全員斷線 5 分鐘中止、不分勝負；邀請全部清除 | 4.6（D-25） |
