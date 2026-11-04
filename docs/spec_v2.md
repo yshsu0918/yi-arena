@@ -155,7 +155,7 @@ repo
 | 欄位 | 型別 | 圍棋 `go` | 五子棋 `gomoku` |
 | --- | --- | --- | --- |
 | `size` | 整數 | `9`、`19`，預設 `19` | `15`，預設 `15` |
-| `color` | 字串 | 座位 `1`（發出邀請者）執的顏色：`B`、`W`、`random`，預設 `random` | 同左 |
+| `color` | 字串 | 座位 `1`（發出邀請者）執的顏色：`B`、`W`、`random`，預設 `random`。續下（帶 `from`）時另有 `same`（與原局相同，預設）與 `swap`（交換），12.8 節 | 同左 |
 | `komi` | 數字 | 0～10，間隔 0.5，預設 `7.5` | 不使用 |
 | `rules` | 字串 | `chinese`（數子法，D-07） | `freestyle`（無禁手） |
 | `handicap` | 整數 | 0 或 2～9（9 路最多 5），見 12.1 節 | 不使用 |
@@ -680,7 +680,7 @@ stateDiagram-v2
 
 | 方法 | 請求 | 回應 |
 | --- | --- | --- |
-| `CreateRoom` | `{room_id, settings, traits, players: [{seat, user_id, name}], open_seats?}`：`settings` 與 `traits` 來自規則服務的 `ValidateSettings`；`open_seats` 只用於開放房間（12.5 節） | `{ws_url}` |
+| `CreateRoom` | `{room_id, settings, traits, players: [{seat, user_id, name}], open_seats?, initial_record?}`：`settings` 與 `traits` 來自規則服務的 `ValidateSettings`；`open_seats` 只用於開放房間（12.5 節）；`initial_record` 只用於續下，是封盤那盤的棋譜，**不放在 `settings` 裡**（12.8 節） | `{ws_url}` |
 | `ListRooms` | — | `{rooms: [RoomItem]}`：所有還沒關閉的房間（`status` 為 `waiting`、`playing`、`finished`）；已 `closed` 的不回傳 |
 | `CloseRoom` | `{room_id}` | — |
 
@@ -710,13 +710,13 @@ stateDiagram-v2
 | 方法 | 請求 | 回應 |
 | --- | --- | --- |
 | `Apply` | `{settings, actions: [Action], action: Action}` | `{ok, error_code?, phase, waiting_on: [seat], view, proposal?, result?}` |
-| `ValidateSettings` | `{settings}` | `{ok, error_code?, settings, traits}`：`settings` 補上預設值；`traits` 是這種遊戲的通用性質，例如 `competitive`（是不是比賽，12.9 節）、`seats`（座位數）。大廳在 `match`、`seek`、`review` 時呼叫，並把 `traits` 交給房間 |
+| `ValidateSettings` | `{settings, initial_record?}`（續下時附上封盤的棋譜，只用來檢查，不會出現在回傳的 `settings` 裡） | `{ok, error_code?, settings, traits}`：`settings` 補上預設值；`traits` 是這種遊戲的通用性質，例如 `competitive`（是不是比賽，12.9 節）、`seats`（座位數）。大廳在 `match`、`seek`、`review` 時呼叫，並把 `traits` 交給房間 |
 | `DescribeGames` | — | `{games: [GameInfo]}`：每種遊戲一筆，內容見下方；大廳收到前端的 `catalog` 時回傳，結果快取 5 分鐘 |
 
 - **`GameInfo`**（遊戲目錄的一筆）：`{game, name, settings: [{field, type, choices 或 range, default}], time: {systems: [允許的計時方式與各參數的範圍], default: 預設的 time}, traits}`。例如五子棋：棋盤 15 路；計時方式 `per_move`（5～300 秒，預設 30 秒）或 `fischer`；`traits: {competitive: true, seats: 2}`、`resume_game: gomoku_resume`。`resume_game` 是這種遊戲封盤後要用哪個遊戲續下；沒有就表示不能封盤。前端依此畫約局表單，送出的 `settings` 再由 `ValidateSettings` 檢查。
 - `Action`：`{type, seat?, data?}`，`data` 的內容由遊戲定義（例如 `{at: "D4"}`）。
   - **遊戲指令**：棋手送的遊戲指令原樣轉成 `Action`，`type` 就是指令名稱（目前：`play`、`pass`、`undo`、`resign`）。房間不知道它們的意思；`play` 在點目時是切換死子、`undo` 在點目時是回到對局，都是規則服務的解讀。
-  - **系統動作**（房間在通用流程中送出）：`start{seed}`（開局，`seed` 是房間產生的隨機種子）、`propose{proposal}`（記錄規則服務提出的提案）、`finalize`（雙方同意後定案）、`resume`（每輪上限到期，結束這輪協商）、`adjudicate`（協商失敗 3 次，系統判定）、`forfeit{seat, reason}`（該座位斷線或閒置判負，`reason` 為 `disconnect` 或 `timeout`）。
+  - **系統動作**（房間在通用流程中送出）：`start{seed, record?}`（開局，`seed` 是房間產生的隨機種子；續下時 `record` 是 `CreateRoom` 帶來的 `initial_record`，寫進這筆動作，重放時直接使用）、`propose{proposal}`（記錄規則服務提出的提案）、`finalize`（雙方同意後定案）、`resume`（每輪上限到期，結束這輪協商）、`adjudicate`（協商失敗 3 次，系統判定）、`forfeit{seat, reason}`（該座位斷線或閒置判負，`reason` 為 `disconnect` 或 `timeout`）。
   - `done` 不送規則服務：同意由房間收集，雙方同意後房間送 `finalize`。
   - `propose`：規則服務回傳新的初始提案時，房間把它記成一筆 `propose`；重放時直接使用，不重新估算。
 - **重放與新動作的分別**：
@@ -852,7 +852,7 @@ stateDiagram-v2
 - `playing` 階段：只有輪到的人能 `play`、`pass`，否則 `not_your_turn`；`resign` 任何一方都能送。
 - `playing` 階段收到 `undo` → `wrong_phase`（對局中的悔棋要用 `offer{type: undo}`，12.6 節）。
 - **讓子的計分**：數子法下有讓子時要補償白棋，補償方式照 `goban-engine` 中國規則的實作（待驗證，見 decisions.md），寫在提案的 `score` 裡。
-- **`go_resume`**（續下，12.8 節）：與圍棋相同的規則，開局時從設定帶來的舊棋譜**只恢復棋盤**（盤面、提子數、輪到誰、打劫狀態），計時重新開始、悔棋次數與點目協商失敗次數重新計算。舊棋譜若停在點目階段，就退回對局：清掉死子標記，照正常輪次繼續（等同點目時的 `undo`，D-07）。`gomoku_resume` 同理。
+- **`go_resume`**（續下，12.8 節）：與圍棋相同的規則，開局時從 `start` 動作帶來的舊棋譜（`record`）**只恢復棋盤**（盤面、提子數、輪到誰、打劫狀態），計時重新開始、悔棋次數與點目協商失敗次數重新計算。舊棋譜若停在點目階段，就退回對局：清掉死子標記，照正常輪次繼續（等同點目時的 `undo`，D-07）。`gomoku_resume` 同理。
 - **計時**：`ValidateSettings` 依遊戲檢查與補上 `time`（12.3 節）。
 - `adjudicate`：用估算器判斷死子後計分（不採用棋手的切換）；估算器不可用時以盤面所有棋子都活計分；回傳 `finished` 與 `Result{reason: adjudicated}`（D-26）。
 - `finalize`：依最後的提案產生 `Result`。
@@ -1127,6 +1127,7 @@ stateDiagram-v2
   - 條件與 A 的邀請相同（顏色互補、其他設定一樣）→ 視為 B `accept` A 的邀請。
   - 條件不同 → A 的邀請以 `match_result{declined, reason: countered}` 結束，同時建立 B 給 A 的新邀請。
 - 這是 4.2 節第 2.5 步 `duplicate_match` 的例外；只有「對方給我的邀請」可以這樣取代，自己送出的邀請要先 `withdraw`。
+- 續下的邀請（設定帶 `from`）被還價時，還價保留 `from`，見 12.8 節。
 
 **不接受邀請**（NNGS 的 `open`）
 
@@ -1236,9 +1237,9 @@ stateDiagram-v2
 
 **續下**（取代 NNGS 的 `load`）：續下就是**約一盤續下模式的新局**，用一般的 `match`（4.2 節），不另設指令（D-42）。
 
-1. 前端在 `stored` 的列表上按「續下」，打開一般的邀局畫面：遊戲預先填成原局的續下模式（從遊戲目錄的 `GameInfo.resume_game` 查到，例如 `go` → `go_resume`），設定帶通用欄位 `from`（封盤那盤的 `room_id`）。計時方式（`time`）與執色（`color`）照一般邀局指定，所以可以重新指定計時、也可以交換黑白。
-2. 前端送 `match{to, settings: {game: 續下模式, from, time, color, ...}}`。大廳照一般的 `match` 檢查（4.2 節），另外因為有 `from`：以 `RecordService.GetAdjourned{room_id}`（gRPC）取得那盤的棋譜，確認雙方都是那盤的棋手、那盤的結果是 `adjourned` → 否則 `not_adjourned`；再把棋譜放進設定交給 `ValidateSettings`。大廳只認得 `from` 這個通用欄位，不需要知道任何遊戲名稱。
-3. 之後就是一般邀局：對方接受、拒絕、還價、逾時都照 4.2 節。接受後建新房，規則服務從舊棋譜**只恢復棋盤**（7.1 節），計時從頭開始。
+1. 前端在 `stored` 的列表上按「續下」，打開一般的邀局畫面：遊戲預先填成原局的續下模式（從遊戲目錄的 `GameInfo.resume_game` 查到，例如 `go` → `go_resume`），設定帶通用欄位 `from`（封盤那盤的 `room_id`）。計時方式（`time`）照一般邀局指定，所以可以重新指定計時。**執色（`color`）預設為「與原局相同」**（`same`）；要交換黑白或隨機，必須明確選 `swap` 或 `random`。
+2. 前端送 `match{to, settings: {game: 續下模式, from, time, color, ...}}`。大廳照一般的 `match` 檢查（4.2 節），另外因為有 `from`：以 `RecordService.GetAdjourned{room_id}`（gRPC）取得那盤的棋譜，確認雙方都是那盤的棋手、那盤的結果是 `adjourned` → 否則 `not_adjourned`；再以 `ValidateSettings{settings, initial_record}` 檢查。**棋譜不放進 `settings`**：`settings` 會複製到邀請、房間列表（推送給所有連著大廳的人）與戰績摘要，放進去等於把整盤棋譜廣播給全大廳。大廳只認得 `from` 這個通用欄位，不需要知道任何遊戲名稱。
+3. 之後就是一般邀局：對方接受、拒絕、還價、逾時都照 4.2 節。**還價保留 `from`**，只能改計時、執色等設定，不能改 `from` 或遊戲種類（要改就是另一個新邀請）；大廳收到還價時再以 `GetAdjourned` 確認一次。接受後，大廳建新房時把棋譜放在 `CreateRoom` 的 `initial_record`（5.3 節），房間開局時寫進 `start` 動作；規則服務從那份棋譜**只恢復棋盤**（7.1 節），計時從頭開始。
 4. 新房的棋譜記下 `from`；結果記在續下模式（例如 `go_resume`）的戰績裡，**不算在原本的遊戲**（例如 `go`）。
 5. 同一盤封盤可以續下任意多次，也可以同時有多間續下房（目前不計分）。
 
@@ -1287,7 +1288,7 @@ stateDiagram-v2
 1. **開房**：`review{settings}` → 大廳以 `ValidateSettings` 檢查 → 建房，開房的人坐座位 `1`。
 2. **其他人加入**：用一般的 `observe`。在非比賽的遊戲裡，**講評所有人都看得到**（包括操作者），因為沒有對局要保護（D-12 只適用於比賽）。
 3. **交出操作權**：操作者送 `pass_seat{user_id}`，把座位交給某位觀戰者，自己變成觀戰者。這是房間的通用操作（換座位），只在 `competitive: false` 的房間允許。接手的人換發成座位上的重連憑證；房間回報 `room.seat_changed`（雙方的 `games` 隨之更新）。
-   - **持有座位的人斷線超過 2 分鐘**（`REVIEW_SEAT_GRACE`），座位自動交給在場最久的觀戰者，同樣換發重連憑證、回報 `room.seat_changed`；沒有觀戰者就等他回來。
+   - **持有座位的人斷線超過 2 分鐘**（`REVIEW_SEAT_GRACE`），座位自動交給在場最久的觀戰者，同樣換發重連憑證、回報 `room.seat_changed`；沒有觀戰者就等他回來。 原本持有座位的人之後重連，以**觀戰者**身分回來，座位不會自動還給他；要拿回操作權，請現在持有座位的人用 `pass_seat` 交還。
 4. **結束**：持有座位的人送 `leave`（非比賽的遊戲在 `playing` 階段也可以 `leave`，第 6 章）就關房，即使還有觀戰者；或房間裡沒有人超過 10 分鐘。關房時以 `Result{winner: none, reason: abort, detail: review_closed, text: Void}` 結束，把整棵棋譜樹（含變化）當成棋譜送給棋譜服務，可以下載成帶變化的 SGF。
 
 **`competitive: false` 對房間與大廳的影響**（房間只看這個性質，不知道是覆盤）：
@@ -1431,7 +1432,7 @@ stateDiagram-v2
 - [ ] 讓子 2～9 子的圍棋：擺子位置正確、白棋先下、貼目預設 0.5。
 - [ ] 開放房間：有人加入就開局；兩人同時 `join` 只有一人成功；保留座位 60 秒沒來會重新開放；房主取消、10 分鐘沒人加入會關房。
 - [ ] 觀戰：人數已滿時大廳直接回 `observers_full`；看得到即時局面；講評只有觀戰者看得到，結束後棋手也看得到並寫進棋譜；不能觀戰自己的對局；最多同時看 10 局；觀戰者列表正確。
-- [ ] 封盤：同意後這局以 `adjourned` 結束、不算對局數與戰績；`stored`、`look` 在棋譜服務查得到；用帶 `from` 的 `match` 續下，可以重新指定計時與執色、會檢查對局數，新房只恢復棋盤（點目中被封盤的局回到對局）；同一盤可以續下多次；續下的結果記在 `go_resume`，不算在 `go`。
+- [ ] 封盤：同意後這局以 `adjourned` 結束、不算對局數與戰績；`stored`、`look` 在棋譜服務查得到；用帶 `from` 的 `match` 續下，可以重新指定計時、執色預設與原局相同（明確選才會交換或隨機）、會檢查對局數，新房只恢復棋盤（點目中被封盤的局回到對局）；同一盤可以續下多次；續下的結果記在 `go_resume`，不算在 `go`；房間列表、邀請與戰績摘要裡都不含封盤的棋譜（只有 `from`）；還價保留 `from`。
 - [ ] 房間服務重啟後，進行中的比賽都封盤，之後可以續下；覆盤房間這類不能封盤的局直接中止；
 - [ ] 匯出 SGF：圍棋與五子棋都能被常見的 SGF 軟體讀入；覆盤可以逐手前後移動；覆盤房間可以載入一盤棋、擺變化、交出操作權，多人看到同一個盤面，關房後能下載帶變化的 SGF。
 - [ ] 斷線時對手看到保留座位倒數；有棋鐘時斷線者時鐘照走。
