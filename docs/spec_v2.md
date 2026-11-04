@@ -585,10 +585,10 @@ stateDiagram-v2
 | `GET /users?name=` | — | 用名稱查玩家（不分大小寫，離線的人也查得到）→ `{user_id, name, created_at}`；也支援前綴搜尋，最多 20 筆（12.11 節） |
 | `GET /users/{user_id}` | — | 查單一玩家 → `{user_id, name, created_at}` |
 | `GET /.well-known/jwks.json` | — | 驗證 token 用的公鑰，大廳啟動時取得並定期更新 |
-| 管理員命令列 | — | 重設密碼、停用帳號、設定管理員 |
+| 管理員命令列 | — | 重設密碼、設定或取消管理員（第一位管理員也由這裡設定）、刪除帳號；**封鎖帳號不在這裡**，統一由大廳的 `ban` 處理（12.11 節） |
 
 - **token**：JWT，非對稱金鑰簽章；內容 `iss`、`sub`（`user_id`）、`name`、`role`（`player`／`admin`）、`iat`、`exp`。大廳只有公鑰，驗證得了、簽發不了。
-- **資料表** `auth.users`：`user_id`、`name`、`name_lower`（唯一）、`password_hash`（argon2id）、`role`、`disabled`、`created_at`。
+- **資料表** `auth.users`：`user_id`、`name`、`name_lower`（唯一）、`password_hash`（argon2id）、`role`、`deleted`（刪除的帳號不能登入、不發 token）、`created_at`。
 - **次數限制**：同一名稱加 IP 每分鐘最多嘗試登入 5 次；同一 IP 每小時最多註冊 5 個帳號；超過 → `rate_limited`。
 - **不做**：email 驗證、自助忘記密碼、第三方登入、兩步驟驗證、驗證碼（M2 換成正式的身分服務時再處理）。
 - 前端把 token 存在 localStorage（簡易版的做法）。
@@ -805,6 +805,7 @@ stateDiagram-v2
 | --- | --- |
 | `news` | 公告（12.11 節） |
 | `moderation` | 禁言、封鎖（帳號與 IP）、到期時間（12.11 節） |
+| `admin_log` | `log_id`、`admin_user_id`、`action`、`target`、`params`（JSON）、`reason`、`result`、`at`；只能新增（12.11 節） |
 | `logins` | `user_id`、IP、時間（12.11 節） |
 
 大廳不再存戰績（D-33）。
@@ -845,7 +846,7 @@ stateDiagram-v2
 | --- | --- | --- |
 | `invalid_name`、`name_taken`、`weak_password` | 身分服務 | 註冊時名稱不合法、已被註冊、密碼太短 |
 | `wrong_password`、`rate_limited` | 身分服務 | 名稱或密碼錯誤；嘗試太多次 |
-| `invalid_token` | 大廳 | 登入 token 無效、過期或帳號已停用 |
+| `invalid_token` | 大廳 | 登入 token 無效、過期，或帳號已刪除（被封鎖是 `banned`） |
 | `invalid_settings` | 大廳（由規則服務判斷） | 對局設定不合法 |
 | `no_such_player` | 大廳 | 對方不在線 |
 | `invalid` | 大廳 | 邀請自己 |
@@ -885,7 +886,7 @@ stateDiagram-v2
 - [ ] `ESTIMATOR=off` 時，終局流程仍可完成（手動點死子）。
 - [ ] `resign` 可以在 `playing` 與 `agreement` 結束對局。
 - [ ] 重新整理頁面，用重連憑證回到所有進行中的房間；舊的重連憑證失效。
-- [ ] 註冊、登入、改密碼可用；名稱大小寫不同視為同一個，不能重複註冊；token 過期或帳號停用後無法登入大廳。
+- [ ] 註冊、登入、改密碼可用；名稱大小寫不同視為同一個，不能重複註冊；token 過期或帳號刪除後無法登入大廳；被 `ban` 的帳號連大廳回 `banned`。
 - [ ] 開新分頁或換裝置，用同一個帳號登入後 `rejoin` 回到對局，舊分頁在該房間的連線被踢掉（同一座位只留一條連線）；大廳連線可以同時有多條。
 - [ ] `CreateRoom` 失敗時，被邀請者收到帶 `match_id` 的 `room_unavailable`，邀請仍可再 `accept`；兩個邀請同時建房不會超過對局上限。
 - [ ] 一方送 `done` 後，另一方用原本的版本送 `done` 仍然成功；對方切換死子後才送的舊版本 `done` 回 `stale_version`。
@@ -1240,7 +1241,24 @@ M1 核心已經有斷線判負（D-25）與重連；這裡補的是顯示與棋�
 - `news` → 最新 20 則公告 `[{news_id, title, body, posted_at}]`。
 - 管理員：`post_news{title, body}`、`delete_news{news_id}`；`announce{text}` 立即推送 `announcement{text}` 給所有連著大廳的玩家。
 
-**管理**（只有 token 的 `role` 是 `admin` 才能用，否則 `not_admin`）
+**管理**
+
+**誰是管理員**：身分服務的帳號 `role` 為 `admin`（由身分服務的命令列設定）。管理指令要通過兩道檢查，否則 `not_admin`：
+
+1. token 的 `role` 是 `admin`；
+2. 大廳再向身分服務 `GET /users/{user_id}` 確認他**現在**仍是管理員（結果快取 1 分鐘）。token 有效 7 天，只看 token 的話，被取消管理員的人在 token 到期前還能用管理指令；第二道檢查讓取消在 1 分鐘內生效。
+
+**在哪裡操作**：前端的**管理員頁面**，只有管理員看得到入口。它跟一般畫面共用同一條大廳連線，直接送下列指令，不另外做工具。頁面分成：
+
+| 分頁 | 內容 |
+| --- | --- |
+| 玩家 | 用名稱找人（12.11 節的查詢玩家），看狀態與登入紀錄，執行禁言、踢人、封鎖 |
+| IP | 查某個 IP 用過的帳號、封鎖 IP |
+| 房間 | 房間列表，強制關房 |
+| 公告 | 發佈、刪除公告，即時廣播 |
+| 管理紀錄 | 所有管理操作的紀錄，可依對象或管理員篩選 |
+
+**指令**（指定玩家時用名稱，大廳向身分服務查出 `user_id`，離線的人也可以處理；每個會改變狀態的指令都可以帶 `reason`）
 
 | 指令 | NNGS | 效果 |
 | --- | --- | --- |
@@ -1251,10 +1269,15 @@ M1 核心已經有斷線判負（D-25）與重連；這裡補的是顯示與棋�
 | `chkpl{name}` | `chkpl` | 查玩家：`user_id`、是否在線、對局與觀戰中的房間、最近登入 IP |
 | `chkip{ip}` | `chkip` | 查這個 IP 最近登入過的帳號 |
 | `logons{name}`、`last` | `logons`、`last` | 某人最近 20 次登入；全站最近 50 次登入 |
+| `close_room{room_id}` | — | 強制關房：大廳呼叫房間服務 `CloseRoom`（4.10 節） |
+| `post_news{title, body}`、`delete_news{news_id}`、`announce{text}` | `news`、`announce` | 見上方「公告」 |
+| `admin_log{target?, admin?, before?}` | — | 查管理紀錄，最新在前，每頁 50 筆 |
 
 - 禁言與封鎖存在大廳的資料庫；大廳以 `RoomService.SetModeration{muzzled, banned_users, banned_ips}` 同步給房間服務（變更時推送，另外每 30 秒對帳），房間服務據此拒絕 `say`、`kibitz` 與連線。
 - 大廳記錄每次登入（`user_id`、IP、時間）供查詢。
-- 強制關房仍是 `CloseRoom`（4.10 節）。
+- 強制關房由管理員頁面的 `close_room` 送出，大廳轉給房間服務 `CloseRoom`（4.10 節）；命令列與測試仍可直接呼叫 `CloseRoom`。
+- **封鎖帳號只有一個地方**：大廳的 `ban`。身分服務不再有「停用帳號」，只保留刪除帳號（真的要移除時才用）。被 `ban` 的人仍能在身分服務登入，但連大廳會被拒絕（`banned`），所以等於進不了平台。
+- **管理紀錄**：每個管理指令（包括失敗的、被 `not_admin` 擋下的）都寫進大廳的 `admin_log`：誰、什麼時間、做了什麼、對象、參數、`reason`、結果。紀錄只能新增，不能修改或刪除。
 
 ### 12.12 新增的介面
 
@@ -1268,7 +1291,7 @@ M1 核心已經有斷線判負（D-25）與重連；這裡補的是顯示與棋�
 | `stored`、`look`、`load`、`sresign` | —、`{room_id}`、`{room_id}`、`{room_id}` | 12.8 |
 | `review` | `{settings}` | 12.9 |
 | `server_info`、`news` | — | 12.11 |
-| 管理員指令 | 見 12.11 節 | 12.11 |
+| 管理員指令（含 `close_room`、`admin_log`） | 見 12.11 節 | 12.11 |
 
 大廳新增送出：`observe_ready{room_id, ws_url, ticket}`、`announcement{text}`；`Player` 多 `open`、`busy`；`RoomItem` 多 `open_seats`、`observers`、`title`；`match_result` 多 `reason`（例如 `countered`）。
 
@@ -1322,7 +1345,8 @@ M1 核心已經有斷線判負（D-25）與重連；這裡補的是顯示與棋�
 - [ ] 匯出 SGF：圍棋與五子棋都能被常見的 SGF 軟體讀入；覆盤可以逐手前後移動；覆盤房間可以載入一盤棋、擺變化、交出操作權，多人看到同一個盤面，關房後能下載帶變化的 SGF。
 - [ ] 斷線時對手看到保留座位倒數；有棋鐘時斷線者時鐘照走。
 - [ ] 用名稱找到離線的玩家，看到他的戰績列表、勝負統計，點進去看棋譜。
-- [ ] 公告推送、伺服器資訊；管理員可以禁言、踢人、封帳號與 IP、查玩家與登入紀錄；一般玩家用管理指令回 `not_admin`。
+- [ ] 管理員頁面：非管理員看不到入口；取消管理員後 1 分鐘內管理指令失效；每個管理操作（含被拒絕的）都出現在管理紀錄。
+- [ ] 公告推送、伺服器資訊；管理員可以禁言、踢人、封帳號與 IP、強制關房、查玩家與登入紀錄；一般玩家用管理指令回 `not_admin`。
 - [ ] 房間服務與大廳服務仍然沒有任何遊戲專屬的程式碼（D-27）：悔棋手數、改貼目、讓子、SGF 格式都在規則服務。
 
 ## 附錄 A：NNGS 指令對照與函式呼叫（M1）
