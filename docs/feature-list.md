@@ -121,7 +121,7 @@
 | 基本重連 | 重新整理頁面後回到原座位 | 現在 | 低 | 規格 | — |
 | 保留座位倒數 | 單一棋手斷線時保留座位 | 現在 | 中 | 規格 | — |
 | 斷線判負與中止 | 單一棋手斷線 10 分鐘判負；雙方幾乎同時斷線 5 分鐘則中止（D-25） | 現在 | 低 | 規格 | 斷線自動封盤（NNGS 不判負） |
-| 封盤、續下 | 雙方同意封盤，這局以「封盤」結束、不算戰績；續下用各遊戲的續下模式（如 `go_resume`）開新房，只恢復棋盤、重新指定計時，可以重複續下，戰績記在續下模式；房間服務重啟時未完成的局自動封盤（D-38、D-41） | 現在 | 中 | 規格 | `adjourn`、`load`、`stored`、`look`、`touch`、`sresign` |
+| 封盤、續下 | 雙方同意封盤，這局以「封盤」結束、不算戰績；續下是用帶 `from` 的 `match` 約一盤續下模式（如 `go_resume`）的新局，只恢復棋盤、重新指定計時與執色，可以重複續下，戰績記在續下模式；房間服務重啟時未完成的局自動封盤（D-38、D-41、D-42）；`load`、`sresign` 由此取代 | 現在 | 中 | 規格 | `adjourn`、`load`、`stored`、`look`、`touch`、`sresign` |
 
 ## 9. 觀戰
 
@@ -240,7 +240,7 @@ NNGS 1.1.22 共 160 個指令：一般玩家約 120 個，管理員約 40 個。
 | 終局 | `done`、`score`、`undo`（點目階段） | 現在 |
 | 悔棋 | `undo` | 現在 |
 | 計時 | `time`、`pause`、`unpause`、`addtime`、`moretime` | 全部 現在 |
-| 封盤續下 | `adjourn`、`load`、`save`、`stored`、`look`、`touch`、`sresign` | 現在 |
+| 封盤續下 | `adjourn`、`load`、`save`、`stored`、`look`、`touch`、`sresign` | 現在（`load` 改用帶 `from` 的 `match`；`sresign` 不提供，續下後 `resign`） |
 | 觀戰 | `observe`、`unobserve`、`kibitz`、`all`、`watching`、`games`、`ginfo`、`title`、`event` | 現在 |
 | 棋譜與戰績 | `sgf`、`mail`、`results`、`rresults`、`review` | 全部 現在（`mail` 不做） |
 | 等級分 | `rating`、`orating`、`rank`、`free`、`unfree`、`ladder`、`join`（加入天梯）、`best`、`drop`、`suggest`、`osuggest` | 未來（優先，需要正式帳號） |
