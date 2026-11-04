@@ -162,7 +162,7 @@ repo
 
 ### 3.2 座標
 
-座標是遊戲自己的事：房間把 `at` 原樣轉給規則服務，格式錯誤由規則服務回 `invalid_coordinate`（D-27）。M1 的圍棋與五子棋沿用 NNGS 寫法：欄為英文字母（跳過 `I`），列為數字、由下往上算，例如 19 路的 `A1` 是左下角、`T19` 是右上角；15 路五子棋為 `A1`～`P15`。
+座標是遊戲自己的事：房間把 `at` 原樣轉給規則服務，格式錯誤由規則服務回 `invalid_coordinate`（D-27）。圍棋與五子棋沿用 NNGS 寫法：欄為英文字母（跳過 `I`），列為數字、由下往上算，例如 19 路的 `A1` 是左下角、`T19` 是右上角；15 路五子棋為 `A1`～`P15`。
 
 ### 3.3 玩家 `Player`
 
@@ -1449,7 +1449,7 @@ NNGS 1.1.22 的完整指令對照見 [feature-list.md 附錄](feature-list.md#�
 | `refresh` | `refresh{room_id}` | `Room.sendState()` | 每次指令後本來就會推送狀態 |
 | `status` | 不實作 | — | 與 `refresh` 重複 |
 | 點目階段輸入座標 | `play{room_id, at, base_version}` | 在 `agreement` 階段，`RulesClient.Apply()` 解讀為切換死活（`toggleSingleGroupRemoval`）→ 新提案 → `Room.clearDone()` | 與 NNGS 相同；差別是**任一方改動都會清除雙方的 `done`**，而且一開始會有估算器提出的判斷 |
-| `undo`（點目階段） | `undo{room_id}` | 房間原樣轉送：`RulesClient.Apply(undo)` → 規則服務在 `agreement` 階段解讀為回到 `playing` | **與 NNGS 不同**：NNGS 會撤回最後一個 `pass`（第二個 pass 的人重下，而且他再 pass 一次就直接回到點目）；我們照 D-07，兩個 pass 都保留、照正常輪次由下一位下，要再連續兩次 pass 才回到點目。對局中的 `undo`（悔棋）在 M1 第二段 |
+| `undo`（點目階段） | `undo{room_id}` | 房間原樣轉送：`RulesClient.Apply(undo)` → 規則服務在 `agreement` 階段解讀為回到 `playing` | **與 NNGS 不同**：NNGS 會撤回最後一個 `pass`（第二個 pass 的人重下，而且他再 pass 一次就直接回到點目）；我們照 D-07，兩個 pass 都保留、照正常輪次由下一位下，要再連續兩次 pass 才回到點目。對局中的悔棋見 12.6 節 |
 | `done` | `done{room_id, version}` | `Room.handleDone()` → 記錄同意 → 雙方都同意同一版本 → `RulesClient.Apply(finalize)` → `Room.finish()` | NNGS 兩人都 `done` 就定案，任一方移除死子都清除雙方的 `done`（與我們相同）；我們另外要指定版本，避免同意到對方剛改過的判斷。NNGS 沒有確認時限；我們有，但不替斷線的人同意（D-25） |
 | `score` | `score{room_id}` | `Room.sendProposal()` | 房間重送目前的提案，不解讀內容；每次提案的 `state` 已附目數 |
 | — | `leave{room_id}` | `Room.Leave()` | NNGS 沒有；我們的房間在局結束後保留 60 秒，可提前離開 |
