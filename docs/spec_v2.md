@@ -28,9 +28,9 @@
 
 **M1 包含：與 NNGS 對齊（第 12 章）**
 
-還價、`open` 開關、忙碌訊息、讓子、開放房間、悔棋、對局中改貼目、對局標題、觀戰（講評、觀戰者列表、同時看多局）、封盤續下、匯出 SGF、覆盤、覆盤房間（獨立的遊戲 `go_review`）、保留座位倒數、伺服器資訊、公告、基本管理。
+還價、`open` 開關、忙碌訊息、讓子、開放房間、悔棋、對局中改貼目、對局標題、觀戰（講評、觀戰者列表、同時看多局）、封盤續下、匯出 SGF、覆盤、覆盤房間（獨立的遊戲 `go_review`）、保留座位倒數、伺服器資訊、公告、基本管理、查詢玩家與看別人的戰績。
 
-**M1 不包含**（M2 或之後）：好友、私訊、離線訊息、封鎖、大廳聊天、聊天頻道、等級分與排行榜、天梯、第三方登入、個人資料與查詢玩家；聯棋、比賽、死活題；五子棋的連珠規則（禁手）；日本規則。
+**M1 不包含**（M2 或之後）：好友、私訊、離線訊息、封鎖、大廳聊天、聊天頻道、等級分與排行榜、天梯、第三方登入、個人資料（自我介紹、頭像）；聯棋、比賽、死活題；五子棋的連珠規則（禁手）；日本規則。
 
 ## 2. 系統組成
 
@@ -548,6 +548,7 @@ stateDiagram-v2
    | 已結束的棋譜（`moves`） | 棋譜服務 `GET /records/{room_id}` | 任何登入的人（與 NNGS 相同；M1 沒有不公開的對局） |
    | SGF（`sgf`） | 棋譜服務 `GET /records/{room_id}.sgf` | 同上 |
    | 自己的戰績（`results`） | 棋譜服務 `GET /users/me/results` | 本人；最新在前，每頁 50 筆 |
+   | 別人的戰績（`rresults`） | 棋譜服務 `GET /users/{user_id}/results` | 任何登入的人（12.11 節） |
    | 進行中的棋譜 | 在房間裡送 `moves` | 這局的棋手與觀戰者；不在房間的人要先觀戰（與 NNGS 不同，NNGS 不必觀戰也能查） |
    | 封盤中的局 | `stored`、`look`（12.8 節） | 這局的棋手 |
 
@@ -581,6 +582,8 @@ stateDiagram-v2
 | `POST /register` | `{name, password}` → `{user_id}` | 名稱規則見 3.3 節；密碼至少 8 字元；名稱已被註冊 → `name_taken` |
 | `POST /login` | `{name, password}` → `{token, expires_at}` | 名稱或密碼錯誤 → `wrong_password`；token 有效 `TOKEN_TTL`（7 天），過期重新登入 |
 | `POST /password` | `{old, new}`（帶 token） | 改密碼 |
+| `GET /users?name=` | — | 用名稱查玩家（不分大小寫，離線的人也查得到）→ `{user_id, name, created_at}`；也支援前綴搜尋，最多 20 筆（12.11 節） |
+| `GET /users/{user_id}` | — | 查單一玩家 → `{user_id, name, created_at}` |
 | `GET /.well-known/jwks.json` | — | 驗證 token 用的公鑰，大廳啟動時取得並定期更新 |
 | 管理員命令列 | — | 重設密碼、停用帳號、設定管理員 |
 
@@ -708,6 +711,8 @@ stateDiagram-v2
 | `GET /records/{room_id}` | `GameRecord`；不存在 → `no_such_record`；對局還沒結束或還沒收到 → `record_not_ready` |
 | `GET /records/{room_id}.sgf` | SGF 文字 |
 | `GET /users/me/results?before=` | `{results: [Summary], next}`，最新在前，每頁 50 筆 |
+| `GET /users/{user_id}/results?before=` | 同上，查別人的戰績（12.11 節） |
+| `GET /users/{user_id}/stats` | `{games, wins, losses, draws, by_game: {go: {...}, gomoku: {...}}}`：勝負統計，不含段位（段位在 M2） |
 
 **棋譜 → 規則**（gRPC `RulesService.ExportRecord`）：收到棋譜時產生 SGF（格式是遊戲的知識，D-27）。
 
@@ -1214,6 +1219,20 @@ M1 核心已經有斷線判負（D-25）與重連；這裡補的是顯示與棋�
 
 **對局標題**（NNGS 的 `title`、`event`）：`settings.title`、`settings.event` 在約局時設定；對局中任一位棋手可以送 `title{text}` 修改標題（寫入棋譜，回報 `room.updated`，房間列表跟著更新）。
 
+**查詢玩家與看別人的戰績**（NNGS 的 `find`、`stats`、`rresults`）
+
+有了簡易註冊，每個人都有不變的 `user_id`，所以這兩項不必等到 M2。前端的「玩家頁面」由前端自己組起來，三個服務各自只回答自己的資料，彼此不互相呼叫：
+
+| 頁面上的資料 | 來源 |
+| --- | --- |
+| 名稱、註冊時間；用名稱找人（離線也找得到） | 身分服務 `GET /users?name=`、`GET /users/{user_id}`（4.11 節） |
+| 在不在線、正在下哪幾盤、在看哪幾盤 | 大廳 `who`（只有在線的人） |
+| 戰績列表、勝負統計 | 棋譜服務 `GET /users/{user_id}/results`、`/stats`（5.6 節） |
+| 某一盤的棋譜 | 從戰績列表點進去：棋譜服務 `GET /records/{room_id}` |
+
+- 任何登入的人都能查任何人（與 NNGS 相同）。
+- 段位、等級分、自我介紹、頭像仍在 M2。
+
 **伺服器資訊**（NNGS 的 `uptime`、`date`）：`server_info` → `{online_players, rooms, uptime_seconds, server_time}`。
 
 **公告**（NNGS 的 `news`、`announce`）
@@ -1302,6 +1321,7 @@ M1 核心已經有斷線判負（D-25）與重連；這裡補的是顯示與棋�
 - [ ] 房間服務重啟後，進行中的局還原，時鐘在雙方重連前不走。
 - [ ] 匯出 SGF：圍棋與五子棋都能被常見的 SGF 軟體讀入；覆盤可以逐手前後移動；覆盤房間可以載入一盤棋、擺變化、交出操作權，多人看到同一個盤面，關房後能下載帶變化的 SGF。
 - [ ] 斷線時對手看到保留座位倒數；有棋鐘時斷線者時鐘照走。
+- [ ] 用名稱找到離線的玩家，看到他的戰績列表、勝負統計，點進去看棋譜。
 - [ ] 公告推送、伺服器資訊；管理員可以禁言、踢人、封帳號與 IP、查玩家與登入紀錄；一般玩家用管理指令回 `not_admin`。
 - [ ] 房間服務與大廳服務仍然沒有任何遊戲專屬的程式碼（D-27）：悔棋手數、改貼目、讓子、SGF 格式都在規則服務。
 
@@ -1330,7 +1350,7 @@ NNGS 1.1.22 的完整指令對照見 [feature-list.md 附錄](feature-list.md#�
 | `decline [who]` | `decline{match_id}` | `Lobby.Decline()` → `Matches.End(declined)` → 雙方 `Send(match_result)` | |
 | `withdraw` | `withdraw{match_id}` | `Lobby.Withdraw()` → `Matches.End(withdrawn)` | |
 | `pending` | `pending` | `Lobby.Pending()` → 回傳自己送出與收到的邀請 | |
-| `results [user]` | `results` | 前端 → 棋譜服務 `GET /users/me/results` | M1 只查自己（NNGS 可查任何人，看別人的戰績在 M2）；戰績由棋譜服務負責，不在大廳（D-33） |
+| `results [user]`、`rresults` | `results` | 前端 → 棋譜服務 `GET /users/me/results` 或 `/users/{user_id}/results` | 自己的與別人的戰績都能查（12.11 節）；戰績由棋譜服務負責，不在大廳（D-33） |
 | `moves [game]` | 進行中：在房間送 `moves{room_id}`；已結束：棋譜服務 `GET /records/{room_id}` | 進行中：`Room.sendRecord()`；已結束：棋譜服務讀 `records` | NNGS 的棋步在伺服器記憶體或檔案，任何人隨時可查；我們以對局結束為界：進行中的在房間服務（要先觀戰），結束後交給棋譜服務（D-33） |
 | `quit` | （關閉連線） | `Lobby.Logout()` → 結束他所有的邀請 | NNGS 斷線時把進行中的對局封盤；我們的對局在房間服務，不受大廳連線影響 |
 | — | `rejoin{room_id}` | `Lobby.Rejoin()` → 確認是棋手 → `Tickets.Sign()` → `Send(game_ready)` | NNGS 沒有；我們的對局在另一個服務，沒有重連憑證時由大廳重發入場券（4.7 節） |
