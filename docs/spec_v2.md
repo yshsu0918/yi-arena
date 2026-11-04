@@ -23,7 +23,7 @@
 | 棋鐘：加拿大讀秒與日式讀秒、延遲補償、超時判定、送時間、查詢剩餘時間、暫停 | 12.3 |
 | 提議與同意（悔棋、改貼目、和棋、暫停、封盤共用） | 12.2 |
 | 觀戰：講評、觀戰者列表、同時看多局 | 12.7 |
-| 封盤續下（續下是新的模式 `go_resume`）；房間服務重啟時，未完成的局自動封盤 | 12.8 |
+| 封盤續下（續下是各遊戲自己的續下模式，例如 `go_resume`，可以重複續下）；房間服務重啟時，未完成的局自動封盤 | 12.8 |
 | 棋譜：進行中由房間服務記錄，結束後交給棋譜服務；`moves`、`results`、匯出 SGF、覆盤、覆盤房間（獨立的遊戲 `go_review`） | 4.8、12.9 |
 | 查詢玩家與看別人的戰績 | 12.11 |
 | 伺服器資訊、公告、管理（管理員頁面、禁言、踢人、封鎖、強制關房、管理紀錄） | 4.10、12.11 |
@@ -145,7 +145,7 @@ repo
 
 | 欄位 | 說明 |
 | --- | --- |
-| `game` | 通用欄位：遊戲名稱。規則服務目前支援 `go`、`gomoku`、`go_review`、`go_resume`；預設 `go` |
+| `game` | 通用欄位：遊戲名稱。規則服務目前支援 `go`、`gomoku`、`go_review`、`go_resume`、`gomoku_resume`；預設 `go` |
 | `time`、`title`、`event` | 通用欄位：計時方式、標題、賽事名稱，由大廳檢查（12.1 節） |
 | 其他欄位 | 由各遊戲定義，見下表 |
 
@@ -264,7 +264,7 @@ repo
 1. 玩家先在身分服務註冊、登入（4.11 節），取得 token。
 2. 前端連上大廳，第一則訊息送 `login{token}`。大廳用身分服務的公鑰驗證簽章與到期時間，取出 `user_id`、`name`、`role`；無效或過期 → `error{invalid_token}` 並斷線。
 3. **同一個帳號同時只有一個登入**（D-30）：這個帳號已經有大廳連線時，新的登入成功，**舊的被踢掉**，與 NNGS 對註冊帳號的做法相同（`boot_out`）。
-   - 舊的大廳連線收到 `error{logged_in_elsewhere}` 後斷開；大廳同時呼叫房間服務 `Kick{user_id}`，舊連線在各房間的連線也一起斷開。
+   - 舊的大廳連線收到 `error{logged_in_elsewhere}` 後斷開。**大廳不呼叫房間服務 `Kick`**：按重新整理時新的登入常比舊連線斷開先到，此時呼叫 `Kick` 會把剛重連回房間的新連線誤踢。房間連線改由「同一座位只留最新的連線」替換（4.3 節第 6 步，`entered_elsewhere`）：新的登入自動 `rejoin` 所有對局，舊裝置在各房間的棋手連線就被替換掉。舊裝置的**觀戰**連線不會被替換，會留到那個分頁關閉；它只能看，不影響對局。`Kick` 只用於管理員的 `kick`（12.11 節）。
    - **對局不受影響**：對局在房間服務，新連線的 `welcome.games` 列出他的房間，前端自動 `rejoin` 回去（4.7 節）。斷開到回去之間照常適用斷線時限。
    - **待回覆的邀請保留**，移到新連線上（同一個人只是換了地方）；與 NNGS 不同，NNGS 踢掉舊連線時會清掉邀請並把對局封盤。
 4. 成功 → `welcome{you, players, rooms, games}`，其中 `games` 是自己正在進行的房間（重新登入時用來回到對局）。
@@ -564,7 +564,7 @@ stateDiagram-v2
    - 不送：沒開局就取消（沒有棋譜）。
    - 封盤（`adjourned`）也送：封盤就是這局以封盤結束，之後續下是另開新房（12.8 節）。
    - 覆盤房間這類非比賽的遊戲（`competitive: false`，12.9 節）也送，但不列入戰績。
-3. **棋譜服務收到後**：以 `room_id` 存一份（重複收到不會存兩次），拆出雙方各一筆戰績摘要（依 `Result.winner` 與座位算出勝、負、和、無效），請規則服務以 `ExportRecord` 產生 SGF 一併存起來；然後回應確認，房間服務才把這則事件從 outbox 刪除。
+3. **棋譜服務收到後**：以 `room_id` 存一份（重複收到不會存兩次），拆出雙方各一筆戰績摘要（結果是 `adjourned` 的局不寫，12.8 節）（依 `Result.winner` 與座位算出勝、負、和、無效），請規則服務以 `ExportRecord` 產生 SGF 一併存起來；然後回應確認，房間服務才把這則事件從 outbox 刪除。
 4. **房間服務的副本**：棋譜服務確認後，房間服務的那份保留 30 天（`ROOM_RECORD_TTL`），之後可以清除；長期保存是棋譜服務的事。
 5. **查詢**：
 
@@ -711,7 +711,7 @@ stateDiagram-v2
 | `ValidateSettings` | `{settings}` | `{ok, error_code?, settings, traits}`：`settings` 補上預設值；`traits` 是這種遊戲的通用性質，例如 `competitive`（是不是比賽，12.9 節）、`seats`（座位數）。大廳在 `match`、`seek`、`review` 時呼叫，並把 `traits` 交給房間 |
 | `DescribeGames` | — | `{games: [GameInfo]}`：每種遊戲一筆，內容見下方；大廳收到前端的 `catalog` 時回傳，結果快取 5 分鐘 |
 
-- **`GameInfo`**（遊戲目錄的一筆）：`{game, name, settings: [{field, type, choices 或 range, default}], time: {systems: [允許的計時方式與各參數的範圍], default: 預設的 time}, traits}`。例如五子棋：棋盤 15 路；計時方式 `per_move`（5～300 秒，預設 30 秒）或 `fischer`；`traits: {competitive: true, seats: 2}`。前端依此畫約局表單，送出的 `settings` 再由 `ValidateSettings` 檢查。
+- **`GameInfo`**（遊戲目錄的一筆）：`{game, name, settings: [{field, type, choices 或 range, default}], time: {systems: [允許的計時方式與各參數的範圍], default: 預設的 time}, traits}`。例如五子棋：棋盤 15 路；計時方式 `per_move`（5～300 秒，預設 30 秒）或 `fischer`；`traits: {competitive: true, seats: 2}`、`resume_game: gomoku_resume`。`resume_game` 是這種遊戲封盤後要用哪個遊戲續下；沒有就表示不能封盤。前端依此畫約局表單，送出的 `settings` 再由 `ValidateSettings` 檢查。
 - `Action`：`{type, seat?, data?}`，`data` 的內容由遊戲定義（例如 `{at: "D4"}`）。
   - **遊戲指令**：棋手送的遊戲指令原樣轉成 `Action`，`type` 就是指令名稱（目前：`play`、`pass`、`undo`、`resign`）。房間不知道它們的意思；`play` 在點目時是切換死子、`undo` 在點目時是回到對局，都是規則服務的解讀。
   - **系統動作**（房間在通用流程中送出）：`start{seed}`（開局，`seed` 是房間產生的隨機種子）、`propose{proposal}`（記錄規則服務提出的提案）、`finalize`（雙方同意後定案）、`resume`（每輪上限到期，結束這輪協商）、`adjudicate`（協商失敗 3 次，系統判定）、`forfeit{seat, reason}`（該座位斷線或閒置判負，`reason` 為 `disconnect` 或 `timeout`）。
@@ -811,7 +811,7 @@ stateDiagram-v2
 **計時模組**（棋鐘用，12.3 節）：
 
 - 純計算：所有操作由房間傳入目前時間，模組不讀系統時間、不設計時器。
-- 介面：開始計時（可以從給定的剩餘時間開始，續下用）、換手（傳入收到時間與延遲補償，回傳用時與事件）、暫停、繼續、送時間、查詢下一個截止時間、取得給前端的快照、序列化。
+- 介面：開始計時、換手（傳入收到時間與延遲補償，回傳用時與事件）、暫停、繼續、送時間、查詢下一個截止時間、取得給前端的快照、序列化。
 - 事件：進入讀秒、用掉一次讀秒、超時。
 - 支援的計時方式：`none`、`canadian`、`japanese`、`per_move`、`fischer`（12.3 節）；計時方式本身與遊戲無關，各遊戲可以用哪幾種、預設哪一種，由規則服務決定。
 - 以座位運作，不假設兩人或輪流。
@@ -820,14 +820,14 @@ stateDiagram-v2
 
 | 時機 | 房間做的事 | 計時模組做的事 |
 | --- | --- | --- |
-| 開局（`start`，或續下時） | 把 `settings.time`、座位、現在時間（續下時再加上封盤時的剩餘時間）交給它 | 建立各座位的時鐘，開始走 `waiting_on` 的座位 |
+| 開局（`start`；續下也一樣，用續下邀請時重新指定的 `time`） | 把 `settings.time`、座位、現在時間交給它 | 建立各座位的時鐘，開始走 `waiting_on` 的座位 |
 | 收到被接受、讓版本改變的遊戲指令 | 傳入：誰、閘道蓋的收到時間、延遲補償、新的 `waiting_on` | 扣掉用時、處理讀秒或加秒，切到下一個座位；回傳用時、事件（進入讀秒、用掉一次讀秒）與新的快照 |
 | 寫紀錄 | 把快照寫進那筆動作的 `data`，再廣播（先寫再廣播） | — |
 | 設計時器 | 問它「下一個截止時間」，設計時器在「截止時間 + 0.5 秒」，計時器編號加 1 | 回傳最早到期的座位與時間 |
 | 計時器到期（`TimerFired`） | 先處理佇列中已排隊的指令，再問它是否真的超時 | 依現在時間判斷；超時就回報是哪個座位，房間送 `forfeit{seat, reason: time}` 給規則服務 |
 | 進入點目、暫停、恢復、送時間 | 傳入對應的操作與現在時間 | 停止或恢復時鐘、加時間，回傳新的快照 |
 | 送 `state` 給前端 | 取快照放進 `state.clock`（附伺服器時間） | 回傳各座位剩餘時間與正在走的座位 |
-| 封盤 | 取快照寫進 `adjourn` 紀錄 | 回傳快照 |
+| 封盤 | 取快照寫進 `adjourn` 紀錄（供查閱；續下不沿用） | 回傳快照 |
 
 ## 7. 規則服務
 
@@ -850,7 +850,7 @@ stateDiagram-v2
 - `playing` 階段：只有輪到的人能 `play`、`pass`，否則 `not_your_turn`；`resign` 任何一方都能送。
 - `playing` 階段收到 `undo` → `wrong_phase`（對局中的悔棋要用 `offer{type: undo}`，12.6 節）。
 - **讓子的計分**：數子法下有讓子時要補償白棋，補償方式照 `goban-engine` 中國規則的實作（待驗證，見 decisions.md），寫在提案的 `score` 裡。
-- **`go_resume`**（續下，12.8 節）：與圍棋相同的規則，只是開局時從設定帶來的棋譜重建局面，接著照圍棋規則下。
+- **`go_resume`**（續下，12.8 節）：與圍棋相同的規則，開局時從設定帶來的舊棋譜**只恢復棋盤**（盤面、提子數、輪到誰、打劫狀態），計時重新開始、悔棋次數與點目協商失敗次數重新計算。舊棋譜若停在點目階段，就退回對局：清掉死子標記，照正常輪次繼續（等同點目時的 `undo`，D-07）。`gomoku_resume` 同理。
 - **計時**：`ValidateSettings` 依遊戲檢查與補上 `time`（12.3 節）。
 - `adjudicate`：用估算器判斷死子後計分（不採用棋手的切換）；估算器不可用時以盤面所有棋子都活計分；回傳 `finished` 與 `Result{reason: adjudicated}`（D-26）。
 - `finalize`：依最後的提案產生 `Result`。
@@ -900,12 +900,12 @@ stateDiagram-v2
 
 | 資料表 | 欄位 |
 | --- | --- |
-| `records` | `room_id`（主鍵）、`settings`（JSON）、`players`（JSON）、`result`（JSON）、`actions`（JSON）、`kibitz`（JSON）、`rules_version`、`started_at`、`ended_at`、`received_at`、`from_room_id`（續下時指向封盤的那盤）、`continued_by`（封盤的局被續下時指向新的那盤） |
+| `records` | `room_id`（主鍵）、`settings`（JSON）、`players`（JSON）、`result`（JSON）、`actions`（JSON）、`kibitz`（JSON）、`rules_version`、`started_at`、`ended_at`、`received_at`、`from_room_id`（續下的局指向封盤的那盤；同一盤封盤可以有多盤續下） |
 | `summaries` | `user_id`、`room_id`、`game`、`settings`（JSON）、`seat`、`opponent`、`outcome`（`win`、`loss`、`draw`、`void`）、`reason`、`result`（`Result.text`）、`ended_at` |
 | `sgf` | `room_id`、`text`、`rules_version` |
 
 - `outcome` 由 `Result.winner` 與自己的座位算出，棋譜服務不需要知道顏色。
-- `(user_id, room_id)` 唯一，重送不會產生重複資料；非比賽的遊戲（`competitive: false`）不寫 `summaries`。
+- `(user_id, room_id)` 唯一，重送不會產生重複資料；非比賽的遊戲（`competitive: false`）與結果是 `adjourned`（封盤）的局不寫 `summaries`。`summaries.game` 取自 `settings.game`，所以續下的局記在 `go_resume`，與 `go` 分開統計。
 - 規則庫升級後，SGF 可以依 `rules_version` 重新產生。
 
 ## 9. 故障處理
@@ -1032,7 +1032,7 @@ stateDiagram-v2
 
 | 種類 | 誰判斷能不能提、同意後做什麼 | 適用的遊戲 |
 | --- | --- | --- |
-| 房間提議：`pause`、`adjourn` | 房間（與遊戲無關） | 圍棋、五子棋都可以 |
+| 房間提議：`pause`、`adjourn` | 房間（與遊戲無關）；`adjourn` 只在這種遊戲有續下模式（`GameInfo.resume_game`）時可以提 | 圍棋、五子棋都可以 |
 | 遊戲提議：`undo`、`komi`、`draw` | 規則服務 | 圍棋：三種；五子棋：`undo`、`draw` |
 
 **指令**（都帶 `room_id`）
@@ -1101,7 +1101,7 @@ stateDiagram-v2
 2. 他的遊戲指令被接受、而且讓版本改變時，用時 = 閘道蓋的收到時間 − 開始時間 − 延遲補償。
 3. 延遲補償 = min(估計單程延遲, 1 秒)，每位棋手每局累計最多 30 秒。估計單程延遲取心跳 ping 往返時間的一半。
 4. 被拒絕的指令不停錶。
-5. **時鐘快照**：每一筆會改變時鐘的紀錄（開局、落子、pass、送時間、同意的提議、暫停、恢復、封盤）都附**雙方**時鐘的剩餘時間；封盤與續下用 `seq` 最新的那一筆，不是「最後一手」，所以悔棋撤回的手不會把時間退回來。每手另記用時與補償量。
+5. **時鐘快照**：每一筆會改變時鐘的紀錄（開局、落子、pass、送時間、同意的提議、暫停、恢復、封盤）都附**雙方**時鐘的剩餘時間，並記每手的用時與補償量，供查棋譜與 SGF 使用（續下不沿用時鐘，12.8 節）。
 
 **超時**：計時模組算出截止時間；房間把計時器設在「截止時間 + 0.5 秒寬限」。到期時先處理佇列中已排隊的指令，其中有截止前收到的合法一手就以那手為準；否則送 `forfeit{seat, reason: time}` 給規則服務，取得 `Result{reason: time}`（D-08）。
 
@@ -1216,46 +1216,47 @@ stateDiagram-v2
 
 ### 12.8 封盤與續下
 
-**原則**：一般對局只負責「從頭下到結束」。封盤就是**這局以「封盤」結束**；續下是**新的遊戲模式** `go_resume`，開一間新房，從封盤時的局面接著下（D-38）。房間服務沒有「停下再接上」的狀態。
+**原則**：一般對局只負責「從頭下到結束」。封盤就是**這局以「封盤」結束**；續下是**各遊戲自己的續下模式**（圍棋 `go_resume`、五子棋 `gomoku_resume`），開一間新房，從封盤時的**棋盤**接著下（D-38、D-41）。房間服務沒有「停下再接上」的狀態。
 
 **封盤**（NNGS 的 `adjourn`）
 
-1. 只能在 `playing` 階段以 `offer{type: adjourn}` 提出，對方同意才成立。
-2. 房間寫入 `adjourn` 紀錄（附雙方時鐘的快照），以 `Result{winner: none, reason: adjourned, text: ?}` 結束這局：送 `game_over` 給棋手與觀戰者，回報 `room.finished`，完整棋譜送給棋譜服務（4.8 節），房間照一般流程關閉。
-3. 封盤的局不列入戰績，也不算對局數。
+1. 只能在 `playing` 階段以 `offer{type: adjourn}` 提出，對方同意才成立；這種遊戲要有續下模式（`GameInfo.resume_game`）。
+2. 房間寫入 `adjourn` 紀錄，以 `Result{winner: none, reason: adjourned, text: ?}` 結束這局：送 `game_over` 給棋手與觀戰者，回報 `room.finished`，完整棋譜送給棋譜服務（4.8 節），房間照一般流程關閉。
+3. 封盤的局**不列入戰績**，也不算對局數。
+4. 封盤的棋譜**不會再被修改**，也**沒有期限**：之後可以續下任意多次，每次都是一盤新的對局。
 
-**房間服務重啟**：重啟前未完成（`playing`、`agreement`）的局一律以同樣方式封盤，用最後一筆時鐘快照（第 9 章）。這與 NNGS 停機時把所有對局封盤相同（`TerminateCleanup`）。
+**房間服務重啟**：重啟前未完成（`playing`、`agreement`）的局一律以同樣方式封盤（第 9 章）。這與 NNGS 停機時把所有對局封盤相同（`TerminateCleanup`）。
 
 **查詢與預覽**（都在棋譜服務，帶 token）
 
-- `stored`（NNGS）→ `GET /users/me/adjourned` → 我是棋手、結果是 `adjourned`、還沒續下的局：`[{room_id, settings, players, move_number, adjourned_at}]`。
-- `look{room_id}`（NNGS）→ `GET /records/{room_id}`；只有這局的棋手可以看封盤中的局，前端畫出盤面。
+- `stored`（NNGS）→ `GET /users/me/adjourned` → 我是棋手、結果是 `adjourned` 的局：`[{room_id, settings, players, move_number, adjourned_at, resumed_count}]`。
+- `look{room_id}`（NNGS）→ `GET /records/{room_id}`；只有這局的棋手可以看封盤的局，前端畫出盤面。
 
 **續下**（NNGS 的 `load`）
 
-1. 一方在大廳送 `load{room_id}`。大廳以 `RecordService.GetAdjourned{room_id}`（gRPC）取得那盤的棋譜與時鐘快照，確認：他是這局的棋手、這局還沒續下、對手在線、**雙方的對局數都未達上限** → 否則對應的錯誤（`not_adjourned`、`no_such_player`、`too_many_games`）。
-2. 像一般邀請一樣送給對手（`Match` 多一個 `resume: room_id`；同樣有逾時、拒絕、撤回；對方接受時再檢查一次對局數）。
-3. 對方 `accept` → 大廳以新的 `room_id` 建房，設定為 `{game: go_resume, from: 舊的 room_id, record: 舊棋譜, clocks: 封盤時的剩餘時間, 其餘設定沿用}`，座位與原本相同。規則服務從棋譜重建局面；房間的計時模組從那個剩餘時間開始。
-4. 之後就是一般對局：到場、計時、結束、送棋譜、記戰績。到場時限內有人沒來 → 新房取消，舊的那盤仍是封盤，可以再 `load`。
-5. 新房的局結束時，棋譜服務記下 `from`，並把舊的那盤標成「已續下」（`continued_by`）。
+1. 一方在大廳送 `load{room_id, time?}`。`time` 是這次續下要用的計時方式（不沿用封盤時的時鐘）；沒填就用續下模式的預設值。
+2. 大廳以 `RecordService.GetAdjourned{room_id}`（gRPC）取得那盤的棋譜，確認：他是這局的棋手、對手在線、**雙方的對局數都未達上限**、兩人之間沒有其他待回覆的邀請 → 否則對應的錯誤（`not_adjourned`、`no_such_player`、`too_many_games`、`duplicate_match`）。
+3. 大廳從遊戲目錄查出原本遊戲的續下模式（`GameInfo.resume_game`，大廳不寫死遊戲名稱），組成設定 `{game: 續下模式, from: 舊的 room_id, record: 舊棋譜, time, 其餘設定沿用原局}`，以 `ValidateSettings` 檢查，再像一般邀請一樣送給對手（`Match` 多一個 `resume: room_id`；同樣有逾時、拒絕、撤回）。對方看到的邀請裡有新的計時方式，可以拒絕、還價。
+4. 對方 `accept`（再檢查一次對局數）→ 大廳以新的 `room_id` 建房，座位與原局相同。規則服務從舊棋譜**只恢復棋盤**（7.1 節）；計時從頭開始。
+5. 之後就是一般對局：到場、計時、結束、送棋譜、記戰績。到場時限內有人沒來 → 新房取消，什麼都不影響。
+6. 新房的棋譜記下 `from`；結果記在續下模式（例如 `go_resume`）的戰績裡，**不算在原本的遊戲**（例如 `go`）。
 
-**封盤中認輸**（NNGS 的 `sresign`）：棋譜服務 `POST /records/{room_id}/resign`（帶 token，只有這局的棋手）→ 棋譜服務請規則服務以 `resign` 產生 `Result`，把那盤的結果從 `adjourned` 改為認輸，並補上雙方的戰績。這是棋譜服務唯一一個會修改已收到棋譜的情況。
-
-**期限**：封盤超過 `ADJOURN_TTL`（30 天）沒有續下 → 棋譜服務把結果改為中止（`Result{reason: abort, detail: adjourn_expired}`），仍不列入戰績。
+**封盤中認輸**（NNGS 的 `sresign`）：棋譜服務 `POST /records/{room_id}/resign`（帶 token，只有這局的棋手）→ 棋譜服務請規則服務以續下模式重放舊棋譜並 `resign`，**產生一盤新的續下紀錄**（`from` 指向封盤的那盤、結果為認輸），記在續下模式的戰績裡。封盤的棋譜本身不變，之後仍可續下。
 
 ```mermaid
 stateDiagram-v2
   state "對局中（房間服務）" as playing
-  state "封盤（棋譜服務，結果 adjourned）" as adjourned
-  state "續下的新房 go_resume" as resumed
-  state "已結束" as finished
+  state "封盤的棋譜（棋譜服務，不再改變）" as adjourned
+  state "續下的新房（go_resume 等）" as resumed
+  state "已結束（記在續下模式的戰績）" as finished
 
   playing --> adjourned: 雙方同意 adjourn，或房間服務重啟
-  adjourned --> resumed: load → 對方 accept → 建新房
+  adjourned --> resumed: load（重新指定計時）→ 對方 accept → 建新房
   resumed --> adjourned: 到場時限內有人沒來（新房取消）
-  resumed --> finished: 照一般方式結束（舊的那盤標成已續下）
-  adjourned --> finished: sresign，或 30 天沒續下（中止）
-  playing --> finished: 照一般方式結束
+  resumed --> finished: 照一般方式結束
+  adjourned --> finished: sresign（產生一盤新的續下紀錄）
+  finished --> resumed: 同一盤封盤可以再 load 一次
+  playing --> finished: 照一般方式結束（不經封盤）
 ```
 
 新增的介面：`RecordService.GetAdjourned{room_id}`（大廳 → 棋譜，gRPC）；棋譜服務 HTTP `GET /users/me/adjourned`、`POST /records/{room_id}/resign`。
@@ -1377,7 +1378,7 @@ stateDiagram-v2
 | `open`、`busy` | `{on}`、`{text}` | 12.4 |
 | `seek`、`unseek`、`join` | `{settings}`、`{room_id}`、`{room_id}` | 12.5 |
 | `observe`、`watching` | `{room_id}`、— | 12.7 |
-| `load` | `{room_id}` | 12.8（`stored`、`look`、`sresign` 改在棋譜服務） |
+| `load` | `{room_id, time?}` | 12.8（`stored`、`look`、`sresign` 在棋譜服務） |
 | `review` | `{settings}` | 12.9 |
 | `server_info`、`news` | — | 12.11 |
 | 管理員指令（含 `close_room`、`admin_log`） | 見 12.11 節 | 12.11 |
@@ -1394,7 +1395,7 @@ stateDiagram-v2
 | `kibitz{text}`、`all` | 觀戰者 | 12.7 |
 | `pass_seat{user_id}` | 座位上的人（只限 `competitive: false` 的房間） | 12.9 |
 
-房間新增送出：`offer`、`offer_result`、`kibitz{from, text}`、`observers{list}`、`game_adjourned`；`state` 多 `clock`、`paused`、`offer?`、`observers`（人數）。
+房間新增送出：`offer`、`offer_result`、`kibitz{from, text}`、`observers{list}`；`state` 多 `clock`、`paused`、`offer?`、`observers`（人數）。
 
 **gRPC**
 
@@ -1429,7 +1430,7 @@ stateDiagram-v2
 - [ ] 讓子 2～9 子的圍棋：擺子位置正確、白棋先下、貼目預設 0.5。
 - [ ] 開放房間：有人加入就開局；兩人同時 `join` 只有一人成功；保留座位 60 秒沒來會重新開放；房主取消、10 分鐘沒人加入會關房。
 - [ ] 觀戰：人數已滿時大廳直接回 `observers_full`；看得到即時局面；講評只有觀戰者看得到，結束後棋手也看得到並寫進棋譜；不能觀戰自己的對局；最多同時看 10 局；觀戰者列表正確。
-- [ ] 封盤：同意後這局以 `adjourned` 結束、不算對局數與戰績；`stored`、`look` 在棋譜服務查得到；`load` 會檢查對局數，續下的新房盤面與時鐘都回到封盤時；`sresign` 補上戰績；30 天沒續下會中止。
+- [ ] 封盤：同意後這局以 `adjourned` 結束、不算對局數與戰績；`stored`、`look` 在棋譜服務查得到；`load` 可以重新指定計時方式、會檢查對局數，新房只恢復棋盤（點目中被封盤的局回到對局）；同一盤可以續下多次；續下與 `sresign` 的結果記在 `go_resume`，不算在 `go`。
 - [ ] 房間服務重啟後，進行中的局都封盤，之後可以 `load` 續下；悔棋後再封盤，時鐘不會被退回。
 - [ ] 匯出 SGF：圍棋與五子棋都能被常見的 SGF 軟體讀入；覆盤可以逐手前後移動；覆盤房間可以載入一盤棋、擺變化、交出操作權，多人看到同一個盤面，關房後能下載帶變化的 SGF。
 - [ ] 斷線時對手看到保留座位倒數；有棋鐘時斷線者時鐘照走。
@@ -1496,7 +1497,7 @@ NNGS 1.1.22 的完整指令對照見 [feature-list.md 附錄](feature-list.md#�
 | `time`、`addtime`、`moretime`、`pause`、`unpause` | 計時 | 12.3 節 |
 | `undo`（對局中）、`komi` | 悔棋、對局中改貼目 | 12.6 節 |
 | `observe`、`unobserve`、`kibitz`、`all`、`watching` | 觀戰、講評（可邊下邊看，不能觀戰自己的對局） | 12.7 節 |
-| `adjourn`、`load`、`stored`、`look`、`sresign` | 封盤、續下（續下是新的模式 `go_resume`） | 12.8 節 |
+| `adjourn`、`load`、`stored`、`look`、`sresign` | 封盤、續下（續下是各遊戲的續下模式，例如 `go_resume`；可以重複續下） | 12.8 節 |
 | `sgf`、`review`、`teach` | 匯出 SGF、覆盤（覆盤房間是獨立的遊戲 `go_review`） | 12.9 節 |
 | `title`、`event`、`uptime`、`news`、`find`、`stats`、`rresults` | 對局標題、伺服器資訊、公告、查詢玩家與戰績 | 12.11 節 |
 | `muzzle`、`nuke`、`aban`、`announce`、`chkpl`、`chkip`、`logons`、`last` | 管理 | 12.11 節 |
