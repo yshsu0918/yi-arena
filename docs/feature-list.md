@@ -132,17 +132,18 @@
 | 觀戰者列表 | 誰在看這局 | M1 | 低 | 規格 | `all` |
 | 同時觀看多局 | 最多 10 局 | M1 | 低 | 規格 | `observe`（最多 10 局）、`watching` |
 | 延遲直播 | 重要對局晚幾手顯示 | 未來 | 中 | — | — |
+| 大量觀戰（直播模式） | 單一房間上千人觀戰：廣播層加多台閘道推送，搭配延遲直播；先依壓力測試結果決定（[load-test-plan.md](load-test-plan.md)） | 未來 | 高 | — | — |
 
 ## 10. 棋譜與戰績
 
 | 功能 | 說明 | 階段 | 難度 | 狀態 | NNGS 對應 |
 | --- | --- | --- | --- | --- | --- |
-| 記錄棋譜 | 每個動作先寫入再廣播 | M1 | 中 | 規格 | 自動存檔 |
+| 記錄棋譜 | 每個動作先寫入再廣播；對局結束後交給棋譜服務（D-33） | M1 | 中 | 規格 | 自動存檔 |
 | 查看完整棋譜 |  | M1 | 低 | 規格 | `moves` |
 | 我的對局紀錄 | 對局摘要列表 | M1 | 低 | 規格 | `results` |
 | 匯出 SGF | 下載棋譜檔 | M1 | 低 | 規格 | `sgf`、`mail` |
-| 覆盤 | 在網頁上逐手回放 | M1 | 中 | 規格 | `review` |
-| 研究盤 | 一人擺雙方的棋 | M1 | 中 | 規格 | `teach`、`fteach` |
+| 覆盤（自己看） | 在網頁上逐手回放，只在前端 | M1 | 低 | 規格 | `review` |
+| 覆盤房間 | 多人一起看、擺變化、交出操作權；可載入已結束的棋或從空盤開始（取代研究盤）；獨立的遊戲 `go_review`（D-34） | M1 | 中 | 規格 | `review`、`teach`、`fteach` |
 
 ## 11. 等級分與排名
 
@@ -228,7 +229,7 @@ NNGS 1.1.22 共 160 個指令：一般玩家約 120 個，管理員約 40 個。
 | 觀戰 | `observe`、`unobserve`、`kibitz`、`all`、`watching`、`games`、`ginfo`、`title`、`event` | M1 |
 | 棋譜與戰績 | `sgf`、`mail`、`results`、`rresults`、`review` | 摘要、棋譜、SGF、覆盤 M1；`rresults`（查別人的戰績）M2 |
 | 等級分 | `rating`、`orating`、`rank`、`free`、`unfree`、`ladder`、`join`（加入天梯）、`best`、`drop`、`suggest`、`osuggest` | M2（需要帳號） |
-| 其他模式 | `teach`、`fteach`、`pair`、`teamgo`、`spair`、`problem` | 研究盤 M1；聯棋（獨立規則）、死活題未來 |
+| 其他模式 | `teach`、`fteach`、`pair`、`teamgo`、`spair`、`problem` | 覆盤房間 M1（取代研究盤，D-34）；聯棋（獨立規則）、死活題未來 |
 | 玩家與大廳 | `who`、`awho`、`stats`、`info`、`moreinfo`、`find`、`handles`、`set busy`、`uptime`、`date`、`admins` | 玩家列表、忙碌訊息、伺服器資訊 M1；個人資料與查詢 M2 |
 | 帳號 | `register`、`password`、`reset`（清除戰績）、`quit`、`qu` | 簡易註冊 M1、第三方登入 M2；清除戰績不做 |
 | 社群 | `tell`、`shout`、`gshout`、`messages`、`erase`、`notify`、`znotify`、`unnotify`、`censor`、`uncensor`、`news`、`post`、`shownote` | 公告 M1；好友、私訊、封鎖、離線訊息、大廳聊天 M2 |
