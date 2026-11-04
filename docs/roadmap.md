@@ -108,6 +108,7 @@
 | [feature-list.md](feature-list.md) | 功能列表：每個功能是現在還是未來要做、難度、狀態，附 NNGS 指令對照 |
 | [decisions.md](decisions.md) | 決策紀錄：每個決定的選項與理由、未決事項、待驗證、實驗紀錄 |
 | [load-test-plan.md](load-test-plan.md) | 大量觀戰的壓力測試計畫 |
+| [service-boundaries.md](service-boundaries.md) | 服務邊界：審查中發現的越界、為什麼難、怎麼守住 |
 | [spec_v1.md](spec_v1.md) | 早期依功能分章的完整規劃，僅供參考；實作以 spec_v2 為準 |
 | [history/](history/README.md) | 已不採用或已完成的研究、草案、討論與實驗 |
 | [poc-go-lobby.md](https://github.com/yshsu0918/yi-arena/blob/poc/go-lobby/docs/poc-go-lobby.md)（`poc/go-lobby` 分支） | Go 大廳 PoC 結果 |
